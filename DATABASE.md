@@ -85,6 +85,8 @@ The database is pre-populated with:
 
 Database access is restricted to authorized users with proper credentials. Connection details are available to team members with appropriate permissions.
 
+For security reasons, always use environment variables or secure credential storage when connecting to the database in application code. Never hardcode database credentials in source files.
+
 ## Schema Maintenance
 
 The full SQL schema is available in the [SCHEMA.sql](SCHEMA.sql) file for reference and maintenance purposes.
