@@ -14,6 +14,17 @@ The application uses a Heroku PostgreSQL database with a comprehensive schema de
 
 For detailed database documentation, see [DATABASE.md](DATABASE.md).
 
+## Admin Console
+
+The Crypto Influences Admin Console provides a web-based interface for reviewing and managing AI-extracted cryptocurrency mentions from YouTube videos. Key features include:
+
+- Review queue with filtering and search
+- Content review interface
+- Mention editing and approval workflow
+- Video submission with webhook integration
+
+For detailed admin console documentation, see [ADMIN.md](ADMIN.md).
+
 ## Getting Started
 
 ### Prerequisites
