@@ -4,15 +4,22 @@ A comprehensive platform for tracking and analyzing cryptocurrency influencers a
 
 ## Database Structure
 
-The application uses a Heroku PostgreSQL database with a comprehensive schema designed to track:
+The application uses a Heroku PostgreSQL database (Essential-0 plan) with a comprehensive schema designed to track:
 
-- Crypto influencers across multiple platforms
-- Content items (videos, tweets, posts)
-- Mentions of financial instruments
-- Performance metrics and analytics
-- User portfolios and simulations
+- Crypto influencers across multiple platforms (YouTube, Twitter, TikTok, Telegram)
+- Content items (videos, tweets, posts) with engagement metrics
+- Mentions of financial instruments with AI-assisted extraction
+- Performance metrics and analytics with historical tracking
+- User portfolios and simulations with different time horizons
 
 For detailed database documentation, see [DATABASE.md](DATABASE.md).
+
+### Database Quick Facts
+
+- **Platform**: Heroku PostgreSQL (Essential-0 plan)
+- **Tables**: 17 core and analytical tables
+- **Views**: 8 analytical views for common queries
+- **Initial Data**: Pre-populated with system settings and instruments
 
 ## Getting Started
 
