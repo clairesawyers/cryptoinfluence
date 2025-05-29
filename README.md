@@ -49,3 +49,6 @@ The database is hosted on Heroku PostgreSQL. Connection details are available to
 - AI-assisted mention extraction with human review workflows
 - Comprehensive performance tracking with different time horizons
 - User portfolio simulations and analytics
+- Mobile-first news feed for browsing influencer content
+
+For detailed news feed documentation, see [NEWS_FEED.md](NEWS_FEED.md).
