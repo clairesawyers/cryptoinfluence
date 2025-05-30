@@ -191,7 +191,7 @@ export class BubbleCard {
    * Draw the info area of the card
    */
   private drawInfoArea(left: number, top: number, width: number, height: number): void {
-    const { ctx, video, profileImage, profileLoaded, profileError } = this;
+    const { ctx, video, profileImage, profileLoaded } = this;
     const padding = 8;
     
     ctx.fillStyle = '#111827'; // Gray-900
