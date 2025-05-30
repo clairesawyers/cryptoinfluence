@@ -26,3 +26,22 @@ export interface FeedState {
   sortBy: 'newest' | 'oldest' | 'most_viewed';
   influencerFilter: string;
 }
+
+export interface BubbleState {
+  videos: VideoItem[];
+  loading: boolean;
+  error: string | null;
+  selectedCard: VideoItem | null;
+  selectedDate: Date;
+  viewMode: 'day' | 'week' | 'month';
+}
+
+export interface BubblePosition {
+  x: number;
+  y: number;
+}
+
+export interface CardSize {
+  cardWidth: number;
+  cardHeight: number;
+}

@@ -1,9 +1,9 @@
-import CryptoInfluencesFeed from './components/CryptoInfluencesFeed'
-import './index.css'
+import CryptoBubbleInterface from '../components/CryptoBubbleInterface'
+import '../index.css'
 
 function App() {
   return (
-    <CryptoInfluencesFeed />
+    <CryptoBubbleInterface />
   )
 }
 

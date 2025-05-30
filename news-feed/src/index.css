@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import CryptoVibes Design System */
+@import './styles/design-system.css';
+
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Silkscreen:wght@400;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
 /* Truncate two lines of text */
 .line-clamp-2 {
   display: -webkit-box;
@@ -13,6 +19,16 @@
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+  background-color: var(--surface);
+  color: var(--text-body);
+  font-family: var(--font-body);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background-color: var(--surface);
 }
 
 /* Pulsing animation for skeletons */
@@ -25,10 +41,14 @@ html {
   animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite;
 }
 
+/* Apply dark mode by default */
+:root {
+  color-scheme: dark;
+}
+
 @layer base {
   :root {
-    --radius: 0.5rem
-  ;
+    --radius: 0.5rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -36,7 +56,9 @@ html {
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%}
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+  
   .dark {
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -45,7 +67,7 @@ html {
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 
