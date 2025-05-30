@@ -8,9 +8,8 @@ The Crypto Influence database is designed to track cryptocurrency influencers, t
 
 - **Platform**: Heroku PostgreSQL (Essential-0 plan)
 - **App Name**: crypto-influence-db
-- **Host**: c1i13pt05ja4ag.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com
-- **Port**: 5432
-- **Database**: d95eot0ghbcm79
+
+Database connection details are available to authorized team members through secure channels.
 
 ## Schema Structure
 
