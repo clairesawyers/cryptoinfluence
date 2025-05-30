@@ -12,6 +12,7 @@ export default defineConfig({
   server: {
     allowedHosts: [
       'crypto-influence-app-tunnel-r10xfpcn.devinapps.com',
+      'crypto-influence-app-tunnel-gnhr2wam.devinapps.com',
       'localhost',
     ],
   },
