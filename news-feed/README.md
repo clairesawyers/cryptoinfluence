@@ -1,23 +1,42 @@
-# Crypto Influences News Feed
+# CryptoBubble Interface
 
-Mobile-first feed component for displaying cryptocurrency influencer content from Airtable.
+A canvas-based bubble visualization interface for the Crypto Influence Platform, designed to display cryptocurrency influencer content in an interactive, visually engaging format.
 
 ## Features
 
-- Infinite scroll feed with video cards
-- Filter by influencer platform
-- Sort by newest, oldest, and most viewed
-- Loading states with placeholder cards
-- Error handling and empty state UI
-- Mobile-first responsive design
+- **Canvas-based Bubble Visualization**: Dynamic sizing of video cards based on view count
+- **Spiral Layout Algorithm**: Efficient positioning of video cards in a visually appealing spiral pattern
+- **Interactive Card Selection**: Click to select and view detailed information about specific content
+- **Date Navigation**: Filter content by day, week, or month views
+- **Dark Mode Styling**: Comprehensive dark mode with 3D shadows and gradient backgrounds
+- **Responsive Design**: Works across various screen sizes and devices
 
 ## Tech Stack
 
-- React 18 with TypeScript
-- Tailwind CSS for styling
-- Axios for API requests
-- Lucide React for icons
-- Vite for build tooling
+- **Frontend**: React 18 with TypeScript
+- **Styling**: Tailwind CSS with custom design system
+- **Data Fetching**: Axios for Airtable API integration
+- **Build Tool**: Vite
+- **Deployment**: Heroku with Express server
+
+## Architecture
+
+The CryptoBubble interface is built with a component-based architecture:
+
+- `CryptoBubbleInterface`: Main component managing state and canvas rendering
+- `BubbleCard`: Canvas rendering utility for video cards
+- `BubbleHeader`: Navigation header with links
+- `BubbleControls`: Date and view mode navigation
+- Utility functions in `bubbleUtils.ts` for spiral positioning, card sizing, and date filtering
+
+## Design System
+
+The implementation follows the CryptoVibes Design System with:
+
+- Custom colour palette with primary purple spectrum
+- 3D card and button styles with enhanced shadows
+- Custom typography with Silkscreen, Space Grotesk, and Inter fonts
+- Gradient backgrounds and interactive hover states
 
 ## Local Development
 
@@ -47,19 +66,31 @@ npm run dev
 
 ## Project Structure
 
-- `src/components` - React components including VideoCard and CryptoInfluencesFeed
+- `src/components` - React components including CryptoBubbleInterface and BubbleCard
 - `src/services` - API services for Airtable integration
 - `src/types` - TypeScript interfaces
-- `src/app` - Main application component
-- `src/index.css` - Global styles and Tailwind imports
+- `src/utils` - Utility functions including bubbleUtils for canvas rendering
+- `src/hooks` - Custom hooks for mobile detection and toast notifications
+- `src/styles` - Design system CSS variables and global styles
 
 ## Deployment
 
-The application is deployed to Heroku as a static Vite build.
+The application is deployed to Heroku as a static Vite build served by an Express server:
+
+1. Build the application with `npm run build`
+2. The Express server serves the static files from the `dist` directory
+3. The server is configured to handle client-side routing by serving `index.html` for all routes
+
+For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Technical Architecture
+
+For a detailed overview of the technical architecture, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Future Enhancements
 
-- User authentication and personalized feeds
-- Integration with the main Crypto Influences database
-- Advanced filtering and search capabilities
+- Advanced filtering by cryptocurrency type
+- Performance optimizations for large datasets
+- Animation and transition effects
+- Integration with additional data sources
 - Real-time updates for new content
