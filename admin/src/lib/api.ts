@@ -201,7 +201,13 @@ export const submitVideo = async (videoUrl: string) => {
   }
 
   try {
-    await axios.post('https://hook.us2.make.com/nwaqwkd66lcrlprmipihf2i9qic5yf9b', [{
+    const webhookUrl = process.env.NEXT_PUBLIC_MAKE_WEBHOOK_URL;
+    
+    if (!webhookUrl) {
+      console.warn('Make.com webhook URL not configured');
+    }
+
+    await axios.post(webhookUrl || 'https://hook.us2.make.com/nwaqwkd66lcrlprmipihf2i9qic5yf9b', [{
       videoUrl: videoUrl,
       videoId: videoId,
       submitTime: new Date().toISOString()
