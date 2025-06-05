@@ -1,19 +1,8 @@
-# Crypto Influences News Feed Documentation
+# Crypto Influences CryptoBubbles Documentation
 
 ## Overview
 
-The Crypto Influences News Feed is a mobile-first React application that displays cryptocurrency influencer content from an Airtable database. The feed provides a streamlined interface for users to browse, filter, and sort content from various crypto influencers across multiple platforms.
-
-## Features
-
-- **Infinite Scroll Feed**: Dynamically loads more content as the user scrolls
-- **Video Cards**: Displays video thumbnails, titles, and engagement metrics
-- **Filtering System**: Filter content by influencer platform
-- **Sorting Options**: Sort by newest, oldest, or most viewed
-- **Loading States**: Placeholder cards with pulsing animation
-- **Error Handling**: Comprehensive error states and user feedback
-- **Empty State UI**: Clear messaging when no content matches filters
-- **Mobile-First Design**: Responsive layout optimized for mobile devices
+The CryptoBubbles app is a React application that displays cryptocurrency influencer content from an Airtable database. The feed provides a streamlined interface for users to browse, filter, and sort content from various crypto influencers across multiple platforms.
 
 ## Architecture
 

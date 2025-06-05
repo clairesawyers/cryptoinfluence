@@ -4,9 +4,9 @@ A comprehensive platform for tracking and analyzing cryptocurrency influencers a
 
 ## Database Structure
 
-The application uses a Heroku PostgreSQL database (Essential-0 plan) with a comprehensive schema designed to track:
+The application uses an Airtable with a comprehensive schema designed to track:
 
-- Crypto influencers across multiple platforms (YouTube, Twitter, TikTok, Telegram)
+- Crypto influencers across multiple platforms (YouTube initially)
 - Content items (videos, tweets, posts) with engagement metrics
 - Mentions of financial instruments with AI-assisted extraction
 - Performance metrics and analytics with historical tracking
@@ -41,11 +41,11 @@ For detailed admin console documentation, see [ADMIN.md](ADMIN.md).
 
 ### Database Connection
 
-The database is hosted on Heroku PostgreSQL. Connection details are available to authorized team members.
+The database is hosted on Airtable. Connection details are available to authorized team members.
 
 ## Features
 
-- Multi-platform influencer tracking (YouTube, Twitter, TikTok, Telegram)
+- Multi-platform influencer tracking (YouTube)
 - AI-assisted mention extraction with human review workflows
 - Comprehensive performance tracking with different time horizons
 - User portfolio simulations and analytics
