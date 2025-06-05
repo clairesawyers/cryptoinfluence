@@ -1,0 +1,399 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { BubbleHeader } from './BubbleHeader';
+import { BubbleControls } from './BubbleControls';
+import { BubbleCanvas } from './BubbleCanvas';
+import { useBubbleData } from '../hooks/useBubbleData';
+import { formatViewCount, formatRelativeTime } from '../utils/formatting';
+import { ExternalLink, Heart, Eye, Clock, TrendingUp, X } from 'lucide-react';
+import CryptoVideoSimulator from './investment/CryptoVideoSimulator';
+
+export const CryptoBubbleInterface: React.FC = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 1200, height: 600 });
+  const [expandedSummary, setExpandedSummary] = useState(false);
+  const [showInvestmentPanel, setShowInvestmentPanel] = useState(false);
+  const [isProfitable, setIsProfitable] = useState(true);
+  
+  const {
+    bubbles,
+    loading,
+    error,
+    selectedCard,
+    selectedDate,
+    viewMode,
+    actions
+  } = useBubbleData(canvasSize);
+
+  // Reset expanded summary when card changes
+  useEffect(() => {
+    setExpandedSummary(false);
+  }, [selectedCard?.id]);
+
+  // Handle home navigation - reset to today's date and day view
+  const handleHomeClick = () => {
+    actions.changeDate(new Date());
+    actions.changeViewMode('day');
+  };
+
+  // Handle window resize
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      if (containerRef.current) {
+        // Account for the fixed 320px side panel (w-80) and padding
+        const availableWidth = window.innerWidth - 320 - 40; // 320px panel + 40px total padding
+        const newWidth = Math.max(600, availableWidth);
+        const newHeight = Math.max(400, window.innerHeight - 200); // Account for header/controls
+        setCanvasSize({ width: newWidth, height: newHeight });
+      }
+    };
+
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+    
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, []);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-400 text-lg mb-4">Error loading data</div>
+          <button 
+            onClick={actions.refreshData}
+            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-950 flex flex-col">
+      <BubbleHeader onHomeClick={handleHomeClick} />
+      
+      <BubbleControls
+        selectedDate={selectedDate}
+        viewMode={viewMode}
+        loading={loading}
+        onDateChange={actions.changeDate}
+        onViewModeChange={actions.changeViewMode}
+      />
+      
+      <div className="flex-1 flex relative">
+        {/* Backdrop overlay when investment panel is open */}
+        {showInvestmentPanel && (
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-300" />
+        )}
+        
+        {/* Main Canvas Area */}
+        <div ref={containerRef} className={`transition-all duration-300 p-5 ${selectedCard ? 'flex-1' : 'flex-1'}`}>
+          {loading ? (
+            <div className="w-full h-full min-h-[400px] bg-gray-900 border-2 border-gray-700 rounded-xl flex items-center justify-center shadow-panel-raised">
+              <div className="text-center">
+                <div className="animate-spin w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <div className="text-gray-400">Loading crypto influencers...</div>
+              </div>
+            </div>
+          ) : bubbles.length === 0 ? (
+            <div className="w-full h-full min-h-[400px] bg-gray-900 border-2 border-gray-700 rounded-xl flex items-center justify-center shadow-panel-raised">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gray-800 border-2 border-gray-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-panel-raised">
+                  <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="text-gray-300 text-lg font-medium mb-2">No videos posted</div>
+                <div className="text-gray-500 text-sm max-w-xs mx-auto">
+                  {viewMode === 'day' && (
+                    <>No crypto influencer content found for {selectedDate.toLocaleDateString('en-US', { 
+                      weekday: 'long',
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}</>
+                  )}
+                  {viewMode === 'week' && (
+                    <>No crypto influencer content found for the week of {(() => {
+                      const weekStart = new Date(selectedDate);
+                      weekStart.setDate(selectedDate.getDate() - selectedDate.getDay());
+                      return weekStart.toLocaleDateString('en-US', { 
+                        month: 'long', 
+                        day: 'numeric',
+                        year: 'numeric'
+                      });
+                    })()}</>
+                  )}
+                  {viewMode === 'month' && (
+                    <>No crypto influencer content found for {selectedDate.toLocaleDateString('en-US', { 
+                      month: 'long',
+                      year: 'numeric'
+                    })}</>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-900 rounded-xl overflow-hidden shadow-panel-floating">
+              <BubbleCanvas
+                bubbles={bubbles}
+                onCardClick={actions.selectCard}
+                canvasSize={canvasSize}
+              />
+            </div>
+          )}
+        </div>
+        
+        {/* Investment Simulation Panel - Slides over canvas */}
+        <div 
+          className={`absolute top-0 left-0 h-full bg-gray-900 border-r-4 border-gray-500 transition-transform duration-300 ease-in-out z-50 ${
+            showInvestmentPanel ? 'translate-x-0' : '-translate-x-full'
+          }`}
+          style={{ 
+            width: 'calc(100% - 320px)',
+            boxShadow: showInvestmentPanel 
+              ? '20px 0 40px rgba(0, 0, 0, 0.5), 10px 0 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05)' 
+              : 'none'
+          }}
+        >
+          {/* Inner glow overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-primary-500/5 via-transparent to-transparent pointer-events-none" />
+          
+          <div className="h-full flex flex-col relative">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b-2 border-gray-700 bg-gray-900/95 backdrop-blur-sm">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-100">Simulated Investment</h2>
+                <p className="text-sm text-gray-400 mt-1">
+                  How would a $1,000 investment made at the time of this video have played out? Explore below.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowInvestmentPanel(false)}
+                  className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  <X size={20} className="text-gray-400" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Content Area */}
+            <div className="flex-1 overflow-hidden">
+              {selectedCard && (
+                <CryptoVideoSimulator
+                  videoId={selectedCard.id}
+                  videoTitle={selectedCard.title}
+                  publishDate={selectedCard.published_at}
+                  coinsMentioned={selectedCard.coins_mentioned || ['Bitcoin', 'Ethereum', 'Solana']}
+                  onProfitabilityChange={setIsProfitable}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Side Panel - Always Present */}
+        <div className="w-80 bg-gray-850 border-l-2 border-gray-700 p-6 shadow-panel-raised transition-all duration-300">
+          {selectedCard ? (
+            <div className="bg-gray-900 border-2 border-primary-600 rounded-xl p-6 shadow-card-intense relative">
+              {/* Thumbnail Preview */}
+              {selectedCard.thumbnail_url && (
+                <div className="mb-6">
+                  <div 
+                    onClick={() => selectedCard?.watch_url && window.open(selectedCard.watch_url, '_blank', 'noopener,noreferrer')}
+                    className="aspect-video bg-gray-800 rounded-lg border-2 border-gray-600 overflow-hidden shadow-panel-raised relative group cursor-pointer"
+                  >
+                    <img 
+                      src={selectedCard.thumbnail_url} 
+                      alt={selectedCard.title}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = document.createElement('div');
+                        fallback.className = 'w-full h-full bg-gray-700 flex items-center justify-center';
+                        fallback.innerHTML = '<div class="text-gray-500 text-sm">Thumbnail Preview</div>';
+                        target.parentElement?.appendChild(fallback);
+                      }}
+                    />
+                    {/* Play overlay on thumbnail */}
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                      <div className="w-16 h-16 bg-black bg-opacity-70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <ExternalLink size={20} className="text-white ml-1" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Video Title */}
+              <div className="mb-4">
+                <h4 className="text-gray-200 font-medium text-base leading-relaxed mb-2">
+                  {selectedCard.title}
+                </h4>
+                
+                <div className="text-gray-400 text-sm">
+                  {formatRelativeTime(selectedCard.published_at)}
+                </div>
+              </div>
+
+              {/* Influencer Name */}
+              <div className="mb-6">
+                <button 
+                  onClick={() => console.log('Navigate to influencer profile:', selectedCard.influencer.display_name)}
+                  className="flex items-center gap-3 group hover:bg-gray-800 p-3 -m-3 rounded-lg transition-all duration-200"
+                >
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 flex items-center justify-center shadow-panel-raised group-hover:shadow-panel-floating">
+                    <span className="text-white font-bold text-sm">
+                      {selectedCard.influencer.display_name.charAt(0)}
+                    </span>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-gray-100 font-semibold text-lg group-hover:text-primary-400 transition-colors">
+                      {selectedCard.influencer.display_name}
+                    </h3>
+                    <p className="text-primary-400 text-sm uppercase tracking-wide">
+                      {selectedCard.influencer.platform}
+                    </p>
+                  </div>
+                  <ExternalLink size={16} className="text-gray-400 group-hover:text-primary-400 transition-colors ml-auto" />
+                </button>
+                
+                {/* Short Summary */}
+                {selectedCard.short_summary && (
+                  <div className="mt-3 px-1">
+                    <p 
+                      className={`text-gray-400 text-sm leading-relaxed ${!expandedSummary ? 'line-clamp-2' : ''}`}
+                      style={!expandedSummary ? {
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      } : {}}
+                    >
+                      {selectedCard.short_summary}
+                    </p>
+                    {selectedCard.short_summary.length > 100 && (
+                      <button
+                        onClick={() => setExpandedSummary(!expandedSummary)}
+                        className="text-primary-400 hover:text-primary-300 text-sm mt-1 transition-colors"
+                      >
+                        {expandedSummary ? 'Show less' : 'Read more'}
+                      </button>
+                    )}
+                  </div>
+                )}
+                
+                <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-600 to-transparent mt-4"></div>
+              </div>
+
+              {/* Metrics */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-gray-800 border-2 border-gray-600 rounded-lg p-4 shadow-panel-raised">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Eye size={16} className="text-accent-turquoise" />
+                    <span className="text-gray-400 text-xs uppercase tracking-wide">Views</span>
+                  </div>
+                  <div className="text-gray-100 font-bold text-lg">
+                    {formatViewCount(selectedCard.view_count)}
+                  </div>
+                </div>
+                
+                <div className="bg-gray-800 border-2 border-gray-600 rounded-lg p-4 shadow-panel-raised">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Heart size={16} className="text-success-400" />
+                    <span className="text-gray-400 text-xs uppercase tracking-wide">Likes</span>
+                  </div>
+                  <div className="text-gray-100 font-bold text-lg">
+                    {formatViewCount(selectedCard.like_count)}
+                  </div>
+                </div>
+              </div>
+
+
+              {/* Duration (YouTube only) */}
+              {selectedCard.influencer.platform === 'youtube' && selectedCard.duration_seconds > 0 && (
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock size={16} className="text-gray-400" />
+                    <span className="text-gray-400 text-sm">Duration</span>
+                  </div>
+                  <div className="text-gray-200 font-medium">
+                    {Math.floor(selectedCard.duration_seconds / 60)}:{(selectedCard.duration_seconds % 60).toString().padStart(2, '0')}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                <button 
+                  onClick={() => setShowInvestmentPanel(true)}
+                  className="w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 shadow-panel-raised hover:shadow-panel-floating transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2"
+                >
+                  <TrendingUp size={16} />
+                  Simulate Investment
+                </button>
+              </div>
+
+              {/* Close Button */}
+              <button 
+                onClick={() => actions.selectCard(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-200 transition-colors duration-200"
+                title="Close details"
+              >
+                ✕
+              </button>
+              
+              {/* Selection hint */}
+              <div className="absolute top-4 left-4 text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">
+                Video Details
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-900 border-2 border-gray-600 rounded-xl p-6 shadow-panel-raised h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gray-800 border-2 border-gray-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-panel-raised">
+                  <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="text-gray-300 text-lg font-medium mb-2">Select a Video</div>
+                <div className="text-gray-500 text-sm max-w-xs mx-auto">
+                  Click on any video bubble to view detailed information and metrics
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer Stats */}
+      <div className="bg-gray-900 border-t-2 border-gray-700 px-6 py-4 shadow-panel-raised">
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-6">
+            <div className="text-gray-400">
+              Displaying <span className="text-accent-turquoise font-medium">{bubbles.length}</span> influencers
+            </div>
+            <div className="text-gray-400">
+              Total Views: <span className="text-success-400 font-medium">
+                {formatViewCount(bubbles.reduce((sum, card) => sum + card.view_count, 0))}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-success-500 animate-pulse"></div>
+              <span className="text-gray-400">Live Data</span>
+            </div>
+            <div className="text-gray-500 text-xs">
+              Last updated: {new Date().toLocaleTimeString()}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
