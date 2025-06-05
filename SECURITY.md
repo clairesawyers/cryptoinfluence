@@ -67,10 +67,3 @@ If you discover a security vulnerability:
 2. **Report immediately** to the security team
 3. **Provide detailed information** about the vulnerability
 4. **Do not exploit** the vulnerability beyond verification
-
-## Additional Resources
-
-- [OWASP Top Ten](https://owasp.org/www-project-top-ten/)
-- [OWASP API Security Top 10](https://owasp.org/www-project-api-security/)
-- [Next.js Environment Variables Documentation](https://nextjs.org/docs/basic-features/environment-variables)
-- [Vite Environment Variables Documentation](https://vitejs.dev/guide/env-and-mode.html)
