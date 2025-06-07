@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Clock, BarChart3, AlertTriangle, ChevronDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, BarChart3, AlertTriangle, ChevronDown, Toggle } from 'lucide-react';
 import { CompactCoinSelector } from './CompactCoinSelector';
 import { CompactPerformanceChart } from './CompactPerformanceChart';
 import { StrategyComparison } from './StrategyComparison';
+import { LiveDataSimulator } from './LiveDataSimulator';
 import { formatCurrencyFull, formatPercentage } from '../../utils/formatting';
 import { useCoinData } from '../../hooks/useCoinData';
 import { useInvestmentData } from '../../hooks/useInvestmentData';
@@ -63,6 +64,7 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
   const [investmentMode, setInvestmentMode] = useState<'equal' | 'custom'>('equal');
   const [showMethodology, setShowMethodology] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [useLiveData, setUseLiveData] = useState(false);
   
   // Real data hooks
   const { 
@@ -227,9 +229,58 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
     );
   }
 
+  // If using live data, show the new simulator
+  if (useLiveData) {
+    return (
+      <div className="h-full overflow-y-auto p-8">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Data Source Toggle */}
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-100">Data Source</h3>
+                <p className="text-xs text-gray-400">Switch between legacy mock data and live Airtable data</p>
+              </div>
+              <button
+                onClick={() => setUseLiveData(false)}
+                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Toggle className="w-4 h-4" />
+                Using Live Data
+              </button>
+            </div>
+          </div>
+
+          <LiveDataSimulator
+            coinMentions={coinsMentioned || []}
+            videoTitle={videoTitle}
+            publishDate={publishDate}
+            channelName="Crypto Influencer"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full overflow-y-auto p-8">
       <div className="max-w-7xl mx-auto space-y-8">
+        {/* Data Source Toggle */}
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-100">Data Source</h3>
+              <p className="text-xs text-gray-400">Switch between legacy mock data and live Airtable data</p>
+            </div>
+            <button
+              onClick={() => setUseLiveData(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
+            >
+              <Toggle className="w-4 h-4" />
+              Using Legacy Data
+            </button>
+          </div>
+        </div>
         {/* Initial Investment Section */}
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-100 mb-4">Initial Investment</h3>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { AirtableClient, CoinMetadata, HistoricalPrice } from '../services/airtableClient';
+import { InstrumentsService } from '../services/instrumentsService';
+import { AirtablePriceService } from '../services/airtablePriceService';
 import { CoinMarketCapClient } from '../services/coinMarketCapClient';
 import { CoinData } from '../components/investment/CryptoVideoSimulator';
 
@@ -39,94 +40,71 @@ export const useCoinData = ({ videoDate, coinNames }: UseCoinDataProps): UseCoin
       console.log('📅 Video Date:', videoDate);
       console.log('🪙 Input coinNames:', coinNames);
 
-      const airtableClient = new AirtableClient();
+      const instrumentsService = new InstrumentsService();
+      const priceService = new AirtablePriceService();
       const coinMarketCapClient = new CoinMarketCapClient();
       
-      // Fetch metadata for all coins
-      const coinMetadata = await airtableClient.fetchCoinMetadata();
-      console.log('📊 Available coin metadata count:', coinMetadata.length);
-      console.log('📊 Sample metadata:', coinMetadata.slice(0, 3).map(c => ({ name: c.name, ticker: c.ticker })));
+      // Find instruments for the mentioned coins
+      const instrumentResults = await instrumentsService.findInstruments(coinNames);
+      const foundInstruments = instrumentResults.map(result => result.instrument);
       
-      // coinNames might contain full names OR symbols, so we need to check both
-      const coinSymbols: string[] = [];
-      const symbolToMetadata: Record<string, CoinMetadata> = {};
+      console.log('📊 Available instruments found:', foundInstruments.length);
+      console.log('📊 Sample instruments:', foundInstruments.slice(0, 3).map(i => ({ name: i.name, symbol: i.symbol })));
       
-      for (const coinInput of coinNames) {
-        // Try to find by ticker symbol first
-        let metadata = coinMetadata.find(coin => 
-          coin.ticker.toLowerCase() === coinInput.toLowerCase()
-        );
-        
-        // If not found by ticker, try by name
-        if (!metadata) {
-          metadata = coinMetadata.find(coin => 
-            coin.name.toLowerCase() === coinInput.toLowerCase()
-          );
-          if (metadata) {
-            console.log(`✅ Found by name: ${coinInput} -> ${metadata.ticker}`);
-          }
-        } else {
-          console.log(`✅ Found by ticker: ${coinInput}`);
-        }
-        
-        if (metadata) {
-          coinSymbols.push(metadata.ticker);
-          symbolToMetadata[coinInput.toUpperCase()] = metadata;
-        } else {
-          console.warn(`❌ Metadata not found for coin: ${coinInput}`);
-        }
+      if (foundInstruments.length === 0) {
+        console.warn('⚠️ No instruments found for mentioned coins:', coinNames);
+        setCoinsData([]);
+        return;
       }
       
+      const coinSymbols = foundInstruments.map(inst => inst.symbol);
+      const symbolToInstrument = foundInstruments.reduce((acc, inst) => {
+        acc[inst.symbol] = inst;
+        return acc;
+      }, {} as Record<string, any>);
+      
       // Fetch current prices from CoinMarketCap in a single batch request
-      console.log('useCoinData: Input coinNames (symbols):', coinNames);
+      console.log('useCoinData: Input coinNames:', coinNames);
       console.log('useCoinData: Mapped coinSymbols:', coinSymbols);
-      console.log('useCoinData: Symbol to metadata mapping:', Object.keys(symbolToMetadata));
+      console.log('useCoinData: Symbol to instrument mapping:', Object.keys(symbolToInstrument));
       const currentPrices = await coinMarketCapClient.getCurrentPrices(coinSymbols);
       console.log('useCoinData: Received prices:', currentPrices);
       
-      // Process each coin mentioned in the video
-      const coinDataPromises = coinNames.map(async (coinInput, index) => {
+      // Process each found instrument
+      const coinDataPromises = foundInstruments.map(async (instrument, index) => {
         try {
-          // Find metadata for this coin (could be name or symbol)
-          const metadata = symbolToMetadata[coinInput.toUpperCase()];
-
-          if (!metadata) {
-            console.warn(`Metadata not found for coin: ${coinInput}`);
-            return null;
-          }
-
           // Get price at video date (initial price for investment)
-          const initialPrice = await airtableClient.getPriceAtDate(metadata.name, videoDate);
+          const initialPrice = await priceService.getPriceOnDate(instrument.symbol, videoDate);
           
           // Get current price from CoinMarketCap
-          const currentPrice = currentPrices[metadata.ticker];
-          console.log(`useCoinData: ${metadata.name} (${metadata.ticker}) - Initial: $${initialPrice}, Current: $${currentPrice}, Logo: ${metadata.logoUrl}`);
+          const currentPrice = currentPrices[instrument.symbol];
+          console.log(`useCoinData: ${instrument.name} (${instrument.symbol}) - Initial: $${initialPrice}, Current: $${currentPrice}, Logo: ${instrument.logoUrl}`);
 
           if (!initialPrice) {
-            console.warn(`Initial price data not available for coin: ${metadata.name}`);
+            console.warn(`Initial price data not available for coin: ${instrument.name}`);
             return null;
           }
 
           // Calculate performance metrics (only if current price is available)
           const priceChange = currentPrice ? calculatePriceChange(initialPrice, currentPrice) : 0;
-          const allocation = 100 / coinNames.length; // Equal allocation by default
+          const allocation = 100 / foundInstruments.length; // Equal allocation by default
           const returnAmount = currentPrice ? calculateReturnAmount(allocation, priceChange) : 0;
 
           return {
-            symbol: metadata.ticker,
-            name: metadata.name,
-            category: metadata.category || 'Unknown',
+            symbol: instrument.symbol,
+            name: instrument.name,
+            category: instrument.category || 'Unknown',
             isSelected: true, // All coins selected by default
             allocation,
             initialPrice,
             currentPrice,
             priceChange,
             returnAmount,
-            logoUrl: metadata.logoUrl
+            logoUrl: instrument.logoUrl
           } as CoinData;
 
         } catch (error) {
-          console.error(`Error processing coin ${coinSymbol}:`, error);
+          console.error(`Error processing coin ${instrument.symbol}:`, error);
           return null;
         }
       });

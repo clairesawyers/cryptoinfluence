@@ -99,6 +99,13 @@ export const StrategyComparison: React.FC<StrategyComparisonProps> = ({
   portfolioReturn,
   portfolioReturnPercentage
 }) => {
+  // Log the data received for strategy comparison
+  console.log('🏆 === STRATEGY COMPARISON DATA ===');
+  console.log('💰 Portfolio Value:', portfolioValue);
+  console.log('📈 Portfolio Return:', portfolioReturn);
+  console.log('📊 Portfolio Return %:', portfolioReturnPercentage);
+  console.log('🏆 === END STRATEGY COMPARISON DATA ===\n');
+
   // Show empty state if no portfolio data
   if (portfolioValue === 1000 && portfolioReturn === 0) {
     return (
@@ -148,12 +155,12 @@ export const StrategyComparison: React.FC<StrategyComparisonProps> = ({
     {
       id: 'bitcoin',
       name: 'Hold as Bitcoin',
-      description: 'Investing the entire amount solely in Bitcoin at the time of the video publication.',
+      description: 'Investing the entire amount solely in Bitcoin at the time of the video publication. NOTE: This is currently using mock data - real Bitcoin performance calculation not yet implemented.',
       icon: <Bitcoin size={18} />,
       initialValue: 1000,
-      currentValue: 1156, // 15.56% return
-      return: 156,
-      returnPercentage: 15.56,
+      currentValue: 1156, // MOCK DATA - 15.56% return
+      return: 156, // MOCK DATA
+      returnPercentage: 15.56, // MOCK DATA
       color: 'text-orange-400',
       bgColor: 'bg-orange-500/10',
       borderColor: 'border-orange-500/30'
