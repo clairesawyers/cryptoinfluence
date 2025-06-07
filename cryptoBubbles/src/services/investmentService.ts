@@ -35,9 +35,24 @@ export class InvestmentService {
       console.log('💰 Investment Amount:', investmentAmount);
       console.log('⏰ Investment Delay:', investmentDelayHours, 'hours');
       console.log('🪙 Coins Mentioned:', coinMentions);
+      console.log('🔍 Coins Mentioned Types:', coinMentions.map(c => ({ value: c, type: typeof c })));
+
+      // Validate inputs
+      if (!coinMentions || !Array.isArray(coinMentions) || coinMentions.length === 0) {
+        throw new Error('No coins mentioned in the video');
+      }
+
+      // Filter out null/undefined/empty coins
+      const validCoins = coinMentions.filter(coin => coin && typeof coin === 'string' && coin.trim().length > 0);
+      
+      if (validCoins.length === 0) {
+        throw new Error('No valid coin names found');
+      }
+
+      console.log('✅ Valid coins to process:', validCoins);
 
       // Step 1: Find instruments for mentioned coins
-      const instrumentResults = await this.instrumentsService.findInstruments(coinMentions);
+      const instrumentResults = await this.instrumentsService.findInstruments(validCoins);
       const foundInstruments = instrumentResults.map(result => result.instrument);
       
       if (foundInstruments.length === 0) {

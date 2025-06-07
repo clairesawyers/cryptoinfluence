@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AirtablePriceService } from '../services/airtablePriceService';
+import { AirtableClient } from '../services/airtableClient';
 import { CoinData, InvestmentDataPoint } from '../components/investment/CryptoVideoSimulator';
 
 interface UseInvestmentDataProps {
@@ -61,42 +61,54 @@ export const useInvestmentData = ({
       setLoading(true);
       setError(null);
 
-      console.log('📊 === INVESTMENT DATA CALCULATION START ===');
-      console.log('💰 Initial Investment: $1,000');
-      console.log('📅 Video Date:', videoDate);
-      console.log('⏰ Investment Delay:', investmentDelay);
+      console.log('\n📈 === INVESTMENT TIMELINE CALCULATION START ===');
+      console.log('📊 STEP 1: Investment Parameters');
+      console.log('  💰 Initial Investment: $1,000');
+      console.log('  📅 Video Publish Date:', videoDate);
+      console.log('  ⏰ Investment Delay:', investmentDelay);
+      console.log('  🪙 Number of selected coins:', coinsData.filter(c => c.isSelected).length);
 
-      const priceService = new AirtablePriceService();
+      const airtableClient = new AirtableClient();
+      
+      // STEP 2: Calculate investment timeline
+      console.log('\n📊 STEP 2: Calculate Investment Timeline');
       const investmentDate = calculateInvestmentDate(videoDate, investmentDelay);
       const today = new Date().toISOString().split('T')[0];
+      console.log('  📅 Calculated Investment Date:', investmentDate);
+      console.log('  📅 Current Date (End Date):', today);
       
-      console.log('📅 Investment Date:', investmentDate);
-      console.log('📅 Current Date:', today);
-      
-      // Generate date range from investment date to today
+      // STEP 3: Generate date range for portfolio tracking
+      console.log('\n📊 STEP 3: Generate Portfolio Tracking Dates');
       const dateRange = generateDateRange(investmentDate, today);
-      console.log('📈 Total days in range:', dateRange.length);
+      console.log('  📈 Total days in investment period:', dateRange.length);
       
       // Sample dates to avoid too many API calls (e.g., every 7 days)
       const sampleDates = dateRange.filter((_, index) => index % 7 === 0 || index === dateRange.length - 1);
-      console.log('📍 Sample dates for calculation:', sampleDates.length);
+      console.log('  📍 Sample dates for calculation:', sampleDates.length);
+      console.log('  📅 Sample dates:', sampleDates);
       
-      console.log('🪙 Selected Coins for Investment:', coinsData.filter(c => c.isSelected).map(c => ({
-        name: c.name,
-        symbol: c.symbol,
-        allocation: c.allocation + '%',
-        initialPrice: '$' + c.initialPrice,
-        currentPrice: '$' + c.currentPrice
-      })));
+      // STEP 4: Display selected coins and their allocations
+      console.log('\n📊 STEP 4: Selected Coins Portfolio Breakdown');
+      const selectedCoins = coinsData.filter(c => c.isSelected);
+      selectedCoins.forEach((coin, index) => {
+        console.log(`  ${index + 1}. 🪙 ${coin.name} (${coin.symbol}):`);
+        console.log(`     📊 Allocation: ${coin.allocation.toFixed(2)}%`);
+        console.log(`     💰 Initial Price: $${coin.initialPrice}`);
+        console.log(`     💰 Current Price: $${coin.currentPrice}`);
+        console.log(`     📈 Price Change: ${coin.priceChange >= 0 ? '+' : ''}${coin.priceChange.toFixed(2)}%`);
+        console.log(`     💵 Allocation Amount: $${(1000 * coin.allocation / 100).toFixed(2)}`);
+      });
 
+      // STEP 5: Calculate portfolio value over time
+      console.log('\n📊 STEP 5: Calculate Portfolio Performance Over Time');
       const portfolioValuePromises = sampleDates.map(async (date, index) => {
         let totalValue = 0;
-        console.log(`\n📅 Calculating portfolio value for ${date}:`);
+        console.log(`\n📅 === Calculating portfolio value for ${date} (Day ${index + 1}/${sampleDates.length}) ===`);
         
         // Calculate portfolio value for each selected coin
         for (const coin of coinsData.filter(c => c.isSelected)) {
           try {
-            const priceAtDate = await priceService.getPriceOnDate(coin.symbol, date);
+            const priceAtDate = await airtableClient.getPriceAtDate(coin.name, date);
             if (priceAtDate && coin.initialPrice) {
               const allocationAmount = 1000 * (coin.allocation / 100);
               const coinQuantity = allocationAmount / coin.initialPrice;
@@ -135,20 +147,35 @@ export const useInvestmentData = ({
       // Filter out any failed calculations and ensure we have at least initial and current
       const validResults = results.filter(result => result.value > 0);
       
-      console.log('\n📊 FINAL INVESTMENT RESULTS:');
-      console.log('📈 Portfolio Performance Over Time:', validResults.map(r => ({
-        date: r.date,
-        value: '$' + r.value,
-        change: r.change + '%'
-      })));
+      console.log('\n📆 STEP 6: Final Investment Timeline Results');
+      console.log('  📍 Total valid data points:', validResults.length);
       
       if (validResults.length === 0) {
-        console.error('❌ No valid investment data could be calculated');
+        console.error('  ❌ CRITICAL: No valid investment data could be calculated');
+        console.error('  📍 This means price data was not available for any tracking dates');
         throw new Error('No valid investment data could be calculated');
       }
-
-      console.log('✅ Investment data calculation completed successfully');
-      console.log('📊 === INVESTMENT DATA CALCULATION END ===\n');
+      
+      console.log('\n📈 PORTFOLIO TIMELINE PERFORMANCE:');
+      validResults.forEach((result, index) => {
+        const isFirst = index === 0;
+        const isLast = index === validResults.length - 1;
+        const icon = isFirst ? '🟢' : isLast ? '🏁' : '🟡';
+        console.log(`  ${icon} ${result.date}: $${result.value} (${result.change >= 0 ? '+' : ''}${result.change}%)`);
+      });
+      
+      const finalValue = validResults[validResults.length - 1].value;
+      const totalReturn = finalValue - 1000;
+      const totalReturnPercent = ((totalReturn / 1000) * 100);
+      
+      console.log('\n🏆 FINAL INVESTMENT PERFORMANCE SUMMARY:');
+      console.log(`  💰 Initial Investment: $1,000`);
+      console.log(`  💰 Final Portfolio Value: $${finalValue}`);
+      console.log(`  💵 Total Return: $${totalReturn.toFixed(2)}`);
+      console.log(`  📈 Total Return %: ${totalReturnPercent >= 0 ? '+' : ''}${totalReturnPercent.toFixed(2)}%`);
+      console.log(`  📅 Investment Period: ${sampleDates.length} tracked days`);
+      
+      console.log('\n✅ === INVESTMENT TIMELINE CALCULATION COMPLETE ===\n');
       setInvestmentData(validResults);
       
     } catch (error) {

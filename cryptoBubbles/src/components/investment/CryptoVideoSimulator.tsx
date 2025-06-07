@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Clock, BarChart3, AlertTriangle, ChevronDown, Toggle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, BarChart3, AlertTriangle, ChevronDown, Settings } from 'lucide-react';
 import { CompactCoinSelector } from './CompactCoinSelector';
 import { CompactPerformanceChart } from './CompactPerformanceChart';
 import { StrategyComparison } from './StrategyComparison';
 import { LiveDataSimulator } from './LiveDataSimulator';
+import { ErrorBoundary } from '../ErrorBoundary';
 import { formatCurrencyFull, formatPercentage } from '../../utils/formatting';
 import { useCoinData } from '../../hooks/useCoinData';
 import { useInvestmentData } from '../../hooks/useInvestmentData';
@@ -64,7 +65,7 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
   const [investmentMode, setInvestmentMode] = useState<'equal' | 'custom'>('equal');
   const [showMethodology, setShowMethodology] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
-  const [useLiveData, setUseLiveData] = useState(false);
+  const [useLiveData, setUseLiveData] = useState(false); // Start with legacy data
   
   // Real data hooks
   const { 
@@ -245,18 +246,20 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
                 onClick={() => setUseLiveData(false)}
                 className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                <Toggle className="w-4 h-4" />
+                <Settings className="w-4 h-4" />
                 Using Live Data
               </button>
             </div>
           </div>
 
-          <LiveDataSimulator
-            coinMentions={coinsMentioned || []}
-            videoTitle={videoTitle}
-            publishDate={publishDate}
-            channelName="Crypto Influencer"
-          />
+          <ErrorBoundary>
+            <LiveDataSimulator
+              coinMentions={coinsMentioned || []}
+              videoTitle={videoTitle}
+              publishDate={publishDate}
+              channelName="Crypto Influencer"
+            />
+          </ErrorBoundary>
         </div>
       </div>
     );
@@ -276,7 +279,7 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
               onClick={() => setUseLiveData(true)}
               className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
             >
-              <Toggle className="w-4 h-4" />
+              <Settings className="w-4 h-4" />
               Using Legacy Data
             </button>
           </div>

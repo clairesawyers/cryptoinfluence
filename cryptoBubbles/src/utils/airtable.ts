@@ -265,16 +265,61 @@ export async function fetchContentItems(selectedDate?: Date, viewMode?: 'day' | 
         thumbnailUrl = (thumbnailField as any).url;
       }
       
-      // Process coins_mentioned field - it might be a string that needs parsing
+      // Process coins_mentioned field - it's a Rollup field with JSON-encoded string
       let coinsMentioned: string[] | undefined;
       const coinsMentionedField = record.fields['Coins Mentioned'];
       
-      if (Array.isArray(coinsMentionedField)) {
-        coinsMentioned = coinsMentionedField;
-      } else if (typeof coinsMentionedField === 'string') {
-        // If it's a comma-separated string, split it
-        coinsMentioned = coinsMentionedField.split(',').map(coin => coin.trim()).filter(coin => coin.length > 0);
+      console.log('🔍 Raw Coins Mentioned field:', coinsMentionedField);
+      console.log('🔍 Field type:', typeof coinsMentionedField);
+      
+      if (typeof coinsMentionedField === 'string') {
+        try {
+          // Handle Rollup field format: "\"BTC,SOL,AVAX,ADA,ETH\""
+          let cleanedString = coinsMentionedField;
+          
+          // Remove outer quotes if present
+          if (cleanedString.startsWith('"') && cleanedString.endsWith('"')) {
+            cleanedString = cleanedString.slice(1, -1);
+          }
+          
+          // Remove escaped quotes
+          cleanedString = cleanedString.replace(/\\"/g, '');
+          
+          console.log('🔄 Cleaned string:', cleanedString);
+          
+          // Split by comma and clean up
+          if (cleanedString && cleanedString.length > 0) {
+            coinsMentioned = cleanedString
+              .split(',')
+              .map(coin => coin.trim())
+              .filter(coin => coin.length > 0 && coin !== 'Not found (400)') // Filter out error messages
+              .filter(coin => !coin.includes('Not found')) // Filter out any "Not found" entries
+              .map(coin => coin.toUpperCase()); // Ensure consistent case
+          }
+          
+          console.log('🪙 Parsed coins:', coinsMentioned);
+        } catch (error) {
+          console.error('❌ Error parsing coins mentioned field:', error);
+          
+          // Fallback: try simple comma split
+          coinsMentioned = coinsMentionedField
+            .split(',')
+            .map(coin => coin.trim())
+            .filter(coin => coin.length > 0);
+        }
+      } else if (Array.isArray(coinsMentionedField)) {
+        // Handle if it's already an array (shouldn't happen with Rollup but just in case)
+        coinsMentioned = coinsMentionedField
+          .filter(coin => coin != null && coin !== undefined && coin !== '')
+          .map(coin => String(coin).trim().toUpperCase())
+          .filter(coin => coin.length > 0);
       } else {
+        console.log('⚠️ Coins Mentioned field is null/undefined');
+        coinsMentioned = undefined;
+      }
+      
+      // If we ended up with an empty array, set to undefined
+      if (coinsMentioned && coinsMentioned.length === 0) {
         coinsMentioned = undefined;
       }
       
@@ -300,17 +345,12 @@ export async function fetchContentItems(selectedDate?: Date, viewMode?: 'day' | 
       console.log('🪙 Processed coins_mentioned:', contentItem.coins_mentioned);
       console.log('🏷️ Available fields:', Object.keys(record.fields));
       
-      // Extra logging for investment data debugging
-      console.log('💰 Investment Data Debug for', contentItem.title);
-      console.log('  - Raw Coins Mentioned field:', record.fields['Coins Mentioned']);
-      console.log('  - Type:', typeof coinsMentionedField);
-      console.log('  - Is Array?:', Array.isArray(coinsMentionedField));
-      console.log('  - Processed coins_mentioned:', coinsMentioned);
+      // Investment data debugging summary
+      console.log('💰 Investment Data Summary for', contentItem.title);
       if (coinsMentioned && coinsMentioned.length > 0) {
-        console.log('  - First coin:', coinsMentioned[0]);
-        console.log('  - All coins:', coinsMentioned.join(', '));
+        console.log('  ✅ Successfully parsed', coinsMentioned.length, 'coins:', coinsMentioned.join(', '));
       } else {
-        console.log('  - No coins mentioned or empty array');
+        console.log('  ❌ No coins mentioned or parsing failed');
       }
       
       return contentItem;

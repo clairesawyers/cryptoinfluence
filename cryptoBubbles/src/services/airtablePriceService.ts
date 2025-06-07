@@ -14,8 +14,28 @@ export class AirtablePriceService {
     this.tableId = import.meta.env.VITE_PRICE_HISTORY_AIRTABLE_TABLE_ID;
     this.baseUrl = `https://api.airtable.com/v0/${this.baseId}`;
 
+    // Don't throw error in constructor, check when methods are called
+  }
+
+  private checkConfiguration() {
+    console.log('🔍 PriceService Configuration Check:');
+    console.log('  - Base ID:', this.baseId ? '✅ Set' : '❌ Missing');
+    console.log('  - API Key:', this.apiKey ? '✅ Set' : '❌ Missing');
+    console.log('  - Table ID:', this.tableId ? '✅ Set' : '❌ Missing');
+    console.log('  - Actual values:', {
+      baseId: this.baseId,
+      apiKey: this.apiKey ? `${this.apiKey.substring(0, 8)}...` : 'undefined',
+      tableId: this.tableId
+    });
+    
     if (!this.baseId || !this.apiKey || !this.tableId) {
-      throw new Error('Missing required Airtable configuration for Price History service');
+      throw new Error(`Missing required Airtable configuration for Price History service. Missing: ${
+        [
+          !this.baseId ? 'VITE_PRICE_HISTORY_AIRTABLE_BASE_ID' : null,
+          !this.apiKey ? 'VITE_PRICE_HISTORY_AIRTABLE_API_KEY' : null,
+          !this.tableId ? 'VITE_PRICE_HISTORY_AIRTABLE_TABLE_ID' : null
+        ].filter(Boolean).join(', ')
+      }`);
     }
   }
 
@@ -48,6 +68,7 @@ export class AirtablePriceService {
    */
   async getPriceOnDate(symbol: string, date: string): Promise<number | null> {
     try {
+      this.checkConfiguration();
       const formattedDate = this.formatDateForAirtable(date);
       console.log(`💰 PriceService: Getting price for ${symbol} on ${formattedDate}`);
       
@@ -56,9 +77,9 @@ export class AirtablePriceService {
         {
           headers: this.headers,
           params: {
-            filterByFormula: `AND({Symbol} = '${symbol}', {Recorded At} = '${formattedDate}')`,
+            filterByFormula: `AND({Symbol} = '${symbol}', {Date} = '${formattedDate}')`,
             maxRecords: 1,
-            sort: [{ field: 'Recorded At', direction: 'desc' }]
+            sort: [{ field: 'Date', direction: 'desc' }]
           }
         }
       );
@@ -83,6 +104,7 @@ export class AirtablePriceService {
    */
   async getLatestPrice(symbol: string): Promise<number | null> {
     try {
+      this.checkConfiguration();
       console.log(`💰 PriceService: Getting latest price for ${symbol}`);
       
       const response: AxiosResponse<AirtableResponse<PriceHistoryFields>> = await axios.get(
@@ -92,7 +114,7 @@ export class AirtablePriceService {
           params: {
             filterByFormula: `{Symbol} = '${symbol}'`,
             maxRecords: 1,
-            sort: [{ field: 'Recorded At', direction: 'desc' }]
+            sort: [{ field: 'Date', direction: 'desc' }]
           }
         }
       );
@@ -104,7 +126,7 @@ export class AirtablePriceService {
 
       const record = response.data.records[0];
       const price = record.fields.Price;
-      const date = record.fields['Recorded At'];
+      const date = record.fields['Date'];
       
       console.log(`✅ PriceService: Latest price for ${symbol}: $${price} (${date})`);
       return price;
@@ -132,10 +154,10 @@ export class AirtablePriceService {
         const params: any = {
           filterByFormula: `AND(
             {Symbol} = '${symbol}',
-            IS_AFTER({Recorded At}, '${formattedStartDate}'),
-            IS_BEFORE({Recorded At}, '${formattedEndDate}')
+            IS_AFTER({Date}, '${formattedStartDate}'),
+            IS_BEFORE({Date}, '${formattedEndDate}')
           )`.replace(/\s+/g, ' '),
-          sort: [{ field: 'Recorded At', direction: 'asc' }],
+          sort: [{ field: 'Date', direction: 'asc' }],
           pageSize: 100
         };
         
@@ -157,7 +179,7 @@ export class AirtablePriceService {
 
       // Convert to price data points
       const prices: PriceDataPoint[] = allRecords.map(record => ({
-        date: record.fields['Recorded At'],
+        date: record.fields['Date'],
         price: record.fields.Price,
         symbol: record.fields.Symbol
       }));

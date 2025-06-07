@@ -4,8 +4,9 @@ import { BubbleControls } from './BubbleControls';
 import { BubbleCanvas } from './BubbleCanvas';
 import { useBubbleData } from '../hooks/useBubbleData';
 import { formatViewCount, formatRelativeTime } from '../utils/formatting';
-import { ExternalLink, Heart, Eye, Clock, TrendingUp, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ExternalLink, Heart, Eye, Clock, TrendingUp, X, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import CryptoVideoSimulator from './investment/CryptoVideoSimulator';
+import { QueryDebugTool } from './QueryDebugTool';
 
 export const CryptoBubbleInterface: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -13,6 +14,7 @@ export const CryptoBubbleInterface: React.FC = () => {
   const [expandedSummary, setExpandedSummary] = useState(false);
   const [showInvestmentPanel, setShowInvestmentPanel] = useState(false);
   const [isProfitable, setIsProfitable] = useState(true);
+  const [showDebugTool, setShowDebugTool] = useState(false);
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(true);
   
   const {
@@ -393,6 +395,18 @@ export const CryptoBubbleInterface: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Debug Tool Button (DEV only) */}
+            {import.meta.env.DEV && (
+              <button
+                onClick={() => setShowDebugTool(!showDebugTool)}
+                className="flex items-center gap-1 px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition-colors"
+                title="Open Query Debug Tool"
+              >
+                <Settings className="w-3 h-3" />
+                Debug
+              </button>
+            )}
+            
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-success-500 animate-pulse"></div>
               <span className="text-gray-400">Live Data</span>
@@ -403,6 +417,26 @@ export const CryptoBubbleInterface: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Debug Tool Modal */}
+      {showDebugTool && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">🔍 Query Debug Tool</h2>
+              <button
+                onClick={() => setShowDebugTool(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+            <div className="p-0">
+              <QueryDebugTool />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

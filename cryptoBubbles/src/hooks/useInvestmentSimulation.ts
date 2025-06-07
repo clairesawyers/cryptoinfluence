@@ -51,6 +51,15 @@ export const useInvestmentSimulation = (
 
       console.log('🚀 useInvestmentSimulation: Starting simulation...');
       
+      // Validate inputs
+      if (!coins || coins.length === 0) {
+        throw new Error('No coins provided for simulation');
+      }
+      
+      if (!publishDate) {
+        throw new Error('No publish date provided');
+      }
+      
       // Create the investment simulation
       const newSimulation = await investmentService.createInvestmentSimulation(
         coins,
@@ -70,7 +79,8 @@ export const useInvestmentSimulation = (
       console.log('✅ useInvestmentSimulation: Simulation completed successfully');
     } catch (err) {
       console.error('❌ useInvestmentSimulation: Simulation failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to run simulation');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to run simulation';
+      setError(errorMessage);
       setSimulation(null);
       setStrategies([]);
     } finally {

@@ -29,7 +29,7 @@ export interface InstrumentFields {
 export interface PriceHistoryFields {
   Symbol: string;
   Price: number;
-  'Recorded At': string;
+  'Date': string;
   Source?: string;
   Volume?: number;
   'Market Cap'?: number;

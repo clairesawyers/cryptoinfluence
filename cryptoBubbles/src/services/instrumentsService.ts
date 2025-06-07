@@ -14,8 +14,28 @@ export class InstrumentsService {
     this.tableId = import.meta.env.VITE_INSTRUMENTS_AIRTABLE_TABLE_ID;
     this.baseUrl = `https://api.airtable.com/v0/${this.baseId}`;
 
+    // Don't throw error in constructor, check when methods are called
+  }
+
+  private checkConfiguration() {
+    console.log('🔍 InstrumentsService Configuration Check:');
+    console.log('  - Base ID:', this.baseId ? '✅ Set' : '❌ Missing');
+    console.log('  - API Key:', this.apiKey ? '✅ Set' : '❌ Missing');
+    console.log('  - Table ID:', this.tableId ? '✅ Set' : '❌ Missing');
+    console.log('  - Actual values:', {
+      baseId: this.baseId,
+      apiKey: this.apiKey ? `${this.apiKey.substring(0, 8)}...` : 'undefined',
+      tableId: this.tableId
+    });
+    
     if (!this.baseId || !this.apiKey || !this.tableId) {
-      throw new Error('Missing required Airtable configuration for Instruments service');
+      throw new Error(`Missing required Airtable configuration for Instruments service. Missing: ${
+        [
+          !this.baseId ? 'VITE_INSTRUMENTS_AIRTABLE_BASE_ID' : null,
+          !this.apiKey ? 'VITE_INSTRUMENTS_AIRTABLE_API_KEY' : null,
+          !this.tableId ? 'VITE_INSTRUMENTS_AIRTABLE_TABLE_ID' : null
+        ].filter(Boolean).join(', ')
+      }`);
     }
   }
 
@@ -29,11 +49,11 @@ export class InstrumentsService {
   private mapRecordToInstrument(record: AirtableRecord<InstrumentFields>): Instrument {
     return {
       id: record.id,
-      symbol: record.fields.Symbol,
-      name: record.fields.Name,
-      category: record.fields.Category,
+      symbol: record.fields.Symbol || '',
+      name: record.fields.Name || '',
+      category: record.fields.Category || undefined,
       isActive: record.fields['Is Active'] === 'Yes',
-      logoUrl: record.fields['Logo URL'],
+      logoUrl: record.fields['Logo URL'] || undefined,
       createdAt: record.createdTime,
       updatedAt: record.createdTime
     };
@@ -44,6 +64,7 @@ export class InstrumentsService {
    */
   async getActiveInstruments(): Promise<Instrument[]> {
     try {
+      this.checkConfiguration();
       console.log('🔧 InstrumentsService: Fetching active instruments...');
       
       const response: AxiosResponse<AirtableResponse<InstrumentFields>> = await axios.get(
@@ -78,17 +99,24 @@ export class InstrumentsService {
    */
   async findInstruments(coinInputs: string[]): Promise<InstrumentSearchResult[]> {
     try {
+      this.checkConfiguration();
       console.log('🔍 InstrumentsService: Finding instruments for:', coinInputs);
       
       const activeInstruments = await this.getActiveInstruments();
       const results: InstrumentSearchResult[] = [];
 
       for (const input of coinInputs) {
+        // Add null/undefined checks
+        if (!input || typeof input !== 'string') {
+          console.warn(`❌ Invalid coin input (not a string):`, input);
+          continue;
+        }
+
         const inputLower = input.toLowerCase().trim();
         
         // Try exact symbol match first
         let instrument = activeInstruments.find(
-          inst => inst.symbol.toLowerCase() === inputLower
+          inst => inst.symbol && inst.symbol.toLowerCase() === inputLower
         );
         
         if (instrument) {
@@ -103,7 +131,7 @@ export class InstrumentsService {
 
         // Try exact name match
         instrument = activeInstruments.find(
-          inst => inst.name.toLowerCase() === inputLower
+          inst => inst.name && inst.name.toLowerCase() === inputLower
         );
         
         if (instrument) {
@@ -118,8 +146,8 @@ export class InstrumentsService {
 
         // Try partial name match
         instrument = activeInstruments.find(
-          inst => inst.name.toLowerCase().includes(inputLower) || 
-                 inputLower.includes(inst.name.toLowerCase())
+          inst => inst.name && inst.name.toLowerCase().includes(inputLower) || 
+                 inputLower.includes(inst.name?.toLowerCase() || '')
         );
         
         if (instrument) {
@@ -148,6 +176,7 @@ export class InstrumentsService {
    */
   async getInstrumentBySymbol(symbol: string): Promise<Instrument | null> {
     try {
+      this.checkConfiguration();
       console.log(`🔍 InstrumentsService: Getting instrument by symbol: ${symbol}`);
       
       const response: AxiosResponse<AirtableResponse<InstrumentFields>> = await axios.get(

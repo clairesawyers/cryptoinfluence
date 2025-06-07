@@ -3,7 +3,8 @@ import { useInvestmentSimulation } from '../../hooks/useInvestmentSimulation';
 import { InstrumentsService } from '../../services/instrumentsService';
 import { AirtablePriceService } from '../../services/airtablePriceService';
 import { formatCurrencyFull, formatPercentage } from '../../utils/formatting';
-import { Play, Loader, AlertCircle, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Play, Loader, AlertCircle, CheckCircle, TrendingUp, TrendingDown, Settings } from 'lucide-react';
+import { EnvDebug } from '../EnvDebug';
 
 interface LiveDataSimulatorProps {
   coinMentions: string[];
@@ -35,6 +36,13 @@ export const LiveDataSimulator: React.FC<LiveDataSimulatorProps> = ({
   } = useInvestmentSimulation();
 
   const handleRunSimulation = () => {
+    console.log('🎯 LiveDataSimulator: Running simulation with:');
+    console.log('  - coinMentions:', coinMentions);
+    console.log('  - coinMentions type:', typeof coinMentions);
+    console.log('  - coinMentions length:', coinMentions?.length);
+    console.log('  - publishDate:', publishDate);
+    console.log('  - videoTitle:', videoTitle);
+    
     runSimulation(
       coinMentions,
       publishDate,
@@ -51,10 +59,10 @@ export const LiveDataSimulator: React.FC<LiveDataSimulatorProps> = ({
     
     try {
       console.log('🧪 Testing Instruments Service...');
-      const instrumentsService = new InstrumentsService();
       
       // Test getting active instruments
       try {
+        const instrumentsService = new InstrumentsService();
         const activeInstruments = await instrumentsService.getActiveInstruments();
         results.instruments = activeInstruments.slice(0, 5); // First 5 for display
         console.log('✅ Instruments service working');
@@ -64,6 +72,7 @@ export const LiveDataSimulator: React.FC<LiveDataSimulatorProps> = ({
 
       // Test finding specific coins
       try {
+        const instrumentsService = new InstrumentsService();
         const foundCoins = await instrumentsService.findInstruments(coinMentions);
         console.log('✅ Coin finding working:', foundCoins.length, 'found');
       } catch (err) {
@@ -212,6 +221,16 @@ export const LiveDataSimulator: React.FC<LiveDataSimulatorProps> = ({
             <span className="text-red-400 font-medium">Simulation Error</span>
           </div>
           <p className="text-red-300 text-sm">{error}</p>
+          
+          {/* Help text */}
+          <div className="mt-3 text-xs text-red-200 bg-red-950/50 p-3 rounded">
+            <div className="font-medium mb-1">Common Issues:</div>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Instruments not found: Check if coin symbols exist in your Instruments table</li>
+              <li>Price data missing: Verify price history exists for the investment date</li>
+              <li>API configuration: Ensure all environment variables are set correctly</li>
+            </ul>
+          </div>
         </div>
       )}
 
@@ -302,6 +321,9 @@ export const LiveDataSimulator: React.FC<LiveDataSimulatorProps> = ({
           )}
         </div>
       )}
+
+      {/* Environment Debug in Development */}
+      {import.meta.env.DEV && <EnvDebug />}
     </div>
   );
 };

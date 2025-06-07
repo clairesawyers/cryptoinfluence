@@ -81,7 +81,7 @@ export class AirtableClient {
           
           // Sort by most recent first
           sort: [
-            { field: "Recorded At", direction: "desc" }
+            { field: "Date", direction: "desc" }
           ],
           
           // Limit to recent days
@@ -90,7 +90,7 @@ export class AirtableClient {
       });
 
       return response.data.records.map((record: any) => ({
-        date: record.fields['Recorded At'],
+        date: record.fields['Date'],
         price: parseFloat(record.fields.Price)
       })).reverse(); // Ensure chronological order
     } catch (error) {
@@ -135,7 +135,7 @@ export class AirtableClient {
       const response = await axios.get(`${baseUrl}/${PRICE_HISTORY_TABLE_ID}`, {
         headers,
         params: {
-          filterByFormula: `AND(SEARCH("${coinName}", {Instrument Relation}), IS_SAME({Recorded At}, DATETIME_PARSE("${targetDate}", "YYYY-MM-DD"), "day"))`,
+          filterByFormula: `AND(SEARCH("${coinName}", {Instrument Relation}), IS_SAME({Date}, DATETIME_PARSE("${targetDate}", "YYYY-MM-DD"), "day"))`,
           maxRecords: 1
         }
       });
@@ -160,7 +160,7 @@ export class AirtableClient {
         headers,
         params: {
           filterByFormula: `SEARCH("${coinName}", {Instrument Relation})`,
-          sort: [{ field: "Recorded At", direction: "desc" }],
+          sort: [{ field: "Date", direction: "desc" }],
           maxRecords: 1
         }
       });
