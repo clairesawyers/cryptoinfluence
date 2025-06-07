@@ -99,10 +99,29 @@ export const StrategyComparison: React.FC<StrategyComparisonProps> = ({
   portfolioReturn,
   portfolioReturnPercentage
 }) => {
+  // Show empty state if no portfolio data
+  if (portfolioValue === 1000 && portfolioReturn === 0) {
+    return (
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-yellow-500/20 text-yellow-400 rounded-lg">
+            <Trophy size={18} />
+          </div>
+          <h3 className="text-lg font-medium text-gray-200">Investment Strategy Comparison</h3>
+        </div>
+        <div className="bg-gray-900 border-2 border-dashed border-gray-600 rounded-lg p-8 text-center">
+          <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Trophy size={24} className="text-gray-500" />
+          </div>
+          <div className="text-gray-400 text-sm">No strategy comparison available</div>
+        </div>
+      </div>
+    );
+  }
   const strategies: Strategy[] = [
     {
       id: 'nothing',
-      name: 'Cash Holding',
+      name: 'Hold As Cash',
       description: 'Keeping your entire investment in cash with no market exposure. Safe but no growth potential.',
       icon: <DollarSign size={18} />,
       initialValue: 1000,
@@ -115,7 +134,7 @@ export const StrategyComparison: React.FC<StrategyComparisonProps> = ({
     },
     {
       id: 'portfolio',
-      name: 'Video Portfolio',
+      name: 'Mentioned Coins Portfolio',
       description: 'Investing equally across coins mentioned in the crypto influencer video at the time of publication.',
       icon: <Coins size={18} />,
       initialValue: 1000,
@@ -128,7 +147,7 @@ export const StrategyComparison: React.FC<StrategyComparisonProps> = ({
     },
     {
       id: 'bitcoin',
-      name: 'Bitcoin Only',
+      name: 'Hold as Bitcoin',
       description: 'Investing the entire amount solely in Bitcoin at the time of the video publication.',
       icon: <Bitcoin size={18} />,
       initialValue: 1000,

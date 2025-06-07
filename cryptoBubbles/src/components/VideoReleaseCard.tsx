@@ -10,6 +10,7 @@ interface VideoReleaseCardProps {
   watchUrl: string;
   viewsCount: number;
   publishDate: string;
+  onCardClick?: () => void;
 }
 
 const VideoReleaseCard: React.FC<VideoReleaseCardProps> = ({
@@ -18,10 +19,16 @@ const VideoReleaseCard: React.FC<VideoReleaseCardProps> = ({
   influencerName,
   watchUrl,
   viewsCount,
-  publishDate
+  publishDate,
+  onCardClick
 }) => {
   const handleCardClick = () => {
-    window.open(watchUrl, '_blank', 'noopener,noreferrer');
+    if (onCardClick) {
+      onCardClick();
+    } else {
+      // Fallback to opening URL directly if no onCardClick provided
+      window.open(watchUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   return (

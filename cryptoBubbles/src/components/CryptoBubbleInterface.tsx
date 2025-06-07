@@ -4,7 +4,7 @@ import { BubbleControls } from './BubbleControls';
 import { BubbleCanvas } from './BubbleCanvas';
 import { useBubbleData } from '../hooks/useBubbleData';
 import { formatViewCount, formatRelativeTime } from '../utils/formatting';
-import { ExternalLink, Heart, Eye, Clock, TrendingUp, X } from 'lucide-react';
+import { ExternalLink, Heart, Eye, Clock, TrendingUp, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import CryptoVideoSimulator from './investment/CryptoVideoSimulator';
 
 export const CryptoBubbleInterface: React.FC = () => {
@@ -13,6 +13,7 @@ export const CryptoBubbleInterface: React.FC = () => {
   const [expandedSummary, setExpandedSummary] = useState(false);
   const [showInvestmentPanel, setShowInvestmentPanel] = useState(false);
   const [isProfitable, setIsProfitable] = useState(true);
+  const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(true);
   
   const {
     bubbles,
@@ -27,6 +28,10 @@ export const CryptoBubbleInterface: React.FC = () => {
   // Reset expanded summary when card changes
   useEffect(() => {
     setExpandedSummary(false);
+    // Automatically open the panel when a card is selected
+    if (selectedCard && !isDetailsPanelOpen) {
+      setIsDetailsPanelOpen(true);
+    }
   }, [selectedCard?.id]);
 
   // Handle home navigation - reset to today's date and day view
@@ -39,8 +44,9 @@ export const CryptoBubbleInterface: React.FC = () => {
   useEffect(() => {
     const updateCanvasSize = () => {
       if (containerRef.current) {
-        // Account for the fixed 320px side panel (w-80) and padding
-        const availableWidth = window.innerWidth - 320 - 40; // 320px panel + 40px total padding
+        // Account for the side panel only when it's open
+        const panelWidth = isDetailsPanelOpen ? 320 : 0;
+        const availableWidth = window.innerWidth - panelWidth - 40; // panel + 40px total padding
         const newWidth = Math.max(600, availableWidth);
         const newHeight = Math.max(400, window.innerHeight - 200); // Account for header/controls
         setCanvasSize({ width: newWidth, height: newHeight });
@@ -51,7 +57,7 @@ export const CryptoBubbleInterface: React.FC = () => {
     window.addEventListener('resize', updateCanvasSize);
     
     return () => window.removeEventListener('resize', updateCanvasSize);
-  }, []);
+  }, [isDetailsPanelOpen]);
 
   if (error) {
     return (
@@ -82,120 +88,9 @@ export const CryptoBubbleInterface: React.FC = () => {
       />
       
       <div className="flex-1 flex relative">
-        {/* Backdrop overlay when investment panel is open */}
-        {showInvestmentPanel && (
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-300" />
-        )}
-        
-        {/* Main Canvas Area */}
-        <div ref={containerRef} className={`transition-all duration-300 p-5 ${selectedCard ? 'flex-1' : 'flex-1'}`}>
-          {loading ? (
-            <div className="w-full h-full min-h-[400px] bg-gray-900 border-2 border-gray-700 rounded-xl flex items-center justify-center shadow-panel-raised">
-              <div className="text-center">
-                <div className="animate-spin w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <div className="text-gray-400">Loading crypto influencers...</div>
-              </div>
-            </div>
-          ) : bubbles.length === 0 ? (
-            <div className="w-full h-full min-h-[400px] bg-gray-900 border-2 border-gray-700 rounded-xl flex items-center justify-center shadow-panel-raised">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gray-800 border-2 border-gray-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-panel-raised">
-                  <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div className="text-gray-300 text-lg font-medium mb-2">No videos posted</div>
-                <div className="text-gray-500 text-sm max-w-xs mx-auto">
-                  {viewMode === 'day' && (
-                    <>No crypto influencer content found for {selectedDate.toLocaleDateString('en-US', { 
-                      weekday: 'long',
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}</>
-                  )}
-                  {viewMode === 'week' && (
-                    <>No crypto influencer content found for the week of {(() => {
-                      const weekStart = new Date(selectedDate);
-                      weekStart.setDate(selectedDate.getDate() - selectedDate.getDay());
-                      return weekStart.toLocaleDateString('en-US', { 
-                        month: 'long', 
-                        day: 'numeric',
-                        year: 'numeric'
-                      });
-                    })()}</>
-                  )}
-                  {viewMode === 'month' && (
-                    <>No crypto influencer content found for {selectedDate.toLocaleDateString('en-US', { 
-                      month: 'long',
-                      year: 'numeric'
-                    })}</>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-gray-900 rounded-xl overflow-hidden shadow-panel-floating">
-              <BubbleCanvas
-                bubbles={bubbles}
-                onCardClick={actions.selectCard}
-                canvasSize={canvasSize}
-              />
-            </div>
-          )}
-        </div>
-        
-        {/* Investment Simulation Panel - Slides over canvas */}
-        <div 
-          className={`absolute top-0 left-0 h-full bg-gray-900 border-r-4 border-gray-500 transition-transform duration-300 ease-in-out z-50 ${
-            showInvestmentPanel ? 'translate-x-0' : '-translate-x-full'
-          }`}
-          style={{ 
-            width: 'calc(100% - 320px)',
-            boxShadow: showInvestmentPanel 
-              ? '20px 0 40px rgba(0, 0, 0, 0.5), 10px 0 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05)' 
-              : 'none'
-          }}
-        >
-          {/* Inner glow overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-primary-500/5 via-transparent to-transparent pointer-events-none" />
-          
-          <div className="h-full flex flex-col relative">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b-2 border-gray-700 bg-gray-900/95 backdrop-blur-sm">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-100">Simulated Investment</h2>
-                <p className="text-sm text-gray-400 mt-1">
-                  How would a $1,000 investment made at the time of this video have played out? Explore below.
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowInvestmentPanel(false)}
-                  className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
-                >
-                  <X size={20} className="text-gray-400" />
-                </button>
-              </div>
-            </div>
-            
-            {/* Content Area */}
-            <div className="flex-1 overflow-hidden">
-              {selectedCard && (
-                <CryptoVideoSimulator
-                  videoId={selectedCard.id}
-                  videoTitle={selectedCard.title}
-                  publishDate={selectedCard.published_at}
-                  coinsMentioned={selectedCard.coins_mentioned || ['Bitcoin', 'Ethereum', 'Solana']}
-                  onProfitabilityChange={setIsProfitable}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Side Panel - Always Present */}
-        <div className="w-80 bg-gray-850 border-l-2 border-gray-700 p-6 shadow-panel-raised transition-all duration-300">
+        {/* Side Panel - Slideable */}
+        <div className={`${isDetailsPanelOpen ? 'w-80' : 'w-0'} bg-gray-850 border-r-2 border-gray-700 shadow-panel-raised transition-all duration-300 relative overflow-hidden`}>
+          <div className="w-80 p-6">
           {selectedCard ? (
             <div className="bg-gray-900 border-2 border-primary-600 rounded-xl p-6 shadow-card-intense relative">
               {/* Thumbnail Preview */}
@@ -230,48 +125,34 @@ export const CryptoBubbleInterface: React.FC = () => {
 
               {/* Video Title */}
               <div className="mb-4">
-                <h4 className="text-gray-200 font-medium text-base leading-relaxed mb-2">
+                <h3 className="text-lg font-bold text-gray-100 mb-2 leading-tight">
                   {selectedCard.title}
-                </h4>
+                </h3>
                 
-                <div className="text-gray-400 text-sm">
-                  {formatRelativeTime(selectedCard.published_at)}
-                </div>
-              </div>
-
-              {/* Influencer Name */}
-              <div className="mb-6">
-                <button 
-                  onClick={() => console.log('Navigate to influencer profile:', selectedCard.influencer.display_name)}
-                  className="flex items-center gap-3 group hover:bg-gray-800 p-3 -m-3 rounded-lg transition-all duration-200"
-                >
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 flex items-center justify-center shadow-panel-raised group-hover:shadow-panel-floating">
-                    <span className="text-white font-bold text-sm">
-                      {selectedCard.influencer.display_name.charAt(0)}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-primary-400 font-medium text-sm">
+                    {selectedCard.influencer.display_name}
+                  </span>
+                  <span className="text-gray-500 text-xs">•</span>
+                  <div className="flex items-center gap-1">
+                    <Clock size={12} className="text-gray-500" />
+                    <span className="text-gray-500 text-xs">
+                      {new Date(selectedCard.published_at).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
                     </span>
                   </div>
-                  <div className="text-left">
-                    <h3 className="text-gray-100 font-semibold text-lg group-hover:text-primary-400 transition-colors">
-                      {selectedCard.influencer.display_name}
-                    </h3>
-                    <p className="text-primary-400 text-sm uppercase tracking-wide">
-                      {selectedCard.influencer.platform}
-                    </p>
-                  </div>
-                  <ExternalLink size={16} className="text-gray-400 group-hover:text-primary-400 transition-colors ml-auto" />
-                </button>
-                
-                {/* Short Summary */}
+                </div>
+
+                {/* Short Summary with expand/collapse */}
                 {selectedCard.short_summary && (
-                  <div className="mt-3 px-1">
+                  <div className="mb-4">
                     <p 
-                      className={`text-gray-400 text-sm leading-relaxed ${!expandedSummary ? 'line-clamp-2' : ''}`}
-                      style={!expandedSummary ? {
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden'
-                      } : {}}
+                      className={`text-gray-300 text-sm leading-relaxed transition-all duration-300 ${
+                        expandedSummary ? '' : 'line-clamp-3'
+                      }`}
                     >
                       {selectedCard.short_summary}
                     </p>
@@ -333,7 +214,7 @@ export const CryptoBubbleInterface: React.FC = () => {
                   className="w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 shadow-panel-raised hover:shadow-panel-floating transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2"
                 >
                   <TrendingUp size={16} />
-                  Simulate Investment
+                  Investment Simulator
                 </button>
               </div>
 
@@ -356,7 +237,7 @@ export const CryptoBubbleInterface: React.FC = () => {
               <div className="text-center">
                 <div className="w-16 h-16 bg-gray-800 border-2 border-gray-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-panel-raised">
                   <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 002 2v8a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <div className="text-gray-300 text-lg font-medium mb-2">Select a Video</div>
@@ -366,7 +247,135 @@ export const CryptoBubbleInterface: React.FC = () => {
               </div>
             </div>
           )}
+          </div>
         </div>
+        
+        {/* Toggle Button */}
+        <button
+          onClick={() => setIsDetailsPanelOpen(!isDetailsPanelOpen)}
+          className={`absolute top-1/2 -translate-y-1/2 z-10 bg-gray-800 border-2 border-gray-600 hover:bg-gray-700 text-gray-300 p-2 rounded-r-lg transition-all duration-300 shadow-panel-raised hover:shadow-panel-floating ${
+            isDetailsPanelOpen ? 'left-80' : 'left-0'
+          }`}
+          title={isDetailsPanelOpen ? 'Hide panel' : 'Show panel'}
+        >
+          {isDetailsPanelOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+        </button>
+
+        
+        {/* Main Canvas Area */}
+        <div ref={containerRef} className={`transition-all duration-300 p-5 ${selectedCard ? 'flex-1' : 'flex-1'}`}>
+          {loading ? (
+            <div className="w-full h-full min-h-[400px] bg-gray-900 border-2 border-gray-700 rounded-xl flex items-center justify-center shadow-panel-raised">
+              <div className="text-center">
+                <div className="animate-spin w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <div className="text-gray-400">Loading crypto influencers...</div>
+              </div>
+            </div>
+          ) : bubbles.length === 0 ? (
+            <div className="w-full h-full min-h-[400px] bg-gray-900 border-2 border-gray-700 rounded-xl flex items-center justify-center shadow-panel-raised">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gray-800 border-2 border-gray-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-panel-raised">
+                  <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="text-gray-300 text-lg font-medium mb-2">No videos posted</div>
+                <div className="text-gray-500 text-sm max-w-xs mx-auto">
+                  {viewMode === 'day' && (
+                    <>No crypto influencer content found for {selectedDate.toLocaleDateString('en-US', { 
+                      weekday: 'long',
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}</>
+                  )}
+                  {viewMode === 'week' && (
+                    <>No crypto influencer content found for the week of {(() => {
+                      const weekStart = new Date(selectedDate);
+                      weekStart.setDate(selectedDate.getDate() - selectedDate.getDay());
+                      return weekStart.toLocaleDateString('en-US', { 
+                        month: 'long', 
+                        day: 'numeric',
+                        year: 'numeric'
+                      });
+                    })()}</>
+                  )}
+                  {viewMode === 'month' && (
+                    <>No crypto influencer content found for {selectedDate.toLocaleDateString('en-US', { 
+                      month: 'long',
+                      year: 'numeric'
+                    })}</>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-900 rounded-xl overflow-hidden shadow-panel-floating">
+              <BubbleCanvas
+                bubbles={bubbles}
+                onCardClick={actions.selectCard}
+                canvasSize={canvasSize}
+              />
+            </div>
+          )}
+        </div>
+        
+        {/* Investment Simulation Modal - Covers canvas area only */}
+        {showInvestmentPanel && (
+          <div 
+            className="fixed bg-gray-900 border-4 border-gray-500 rounded-xl z-50 shadow-2xl"
+            style={{ 
+              top: '100px', // Reduced top margin
+              left: isDetailsPanelOpen ? '320px' : '10px', // Reduced margins
+              right: '10px', // Reduced margin
+              bottom: '50px', // Reduced bottom margin
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1)'
+            }}
+          >
+          {/* Inner glow overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-primary-500/5 via-transparent to-transparent pointer-events-none" />
+          
+            <div className="h-full flex flex-col relative">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b-2 border-gray-700 bg-gray-900/95 backdrop-blur-sm rounded-t-lg">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-100">Investment Simulator</h2>
+                  <p className="text-sm text-gray-400 mt-0.5">
+                    How would a $1,000 investment made at the time of this video have played out? Explore below.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowInvestmentPanel(false)}
+                    className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+                  >
+                    <X size={20} className="text-gray-400" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Content Area */}
+              <div className="flex-1 overflow-hidden">
+                {selectedCard && (() => {
+                  // Debug log to see what coins_mentioned data we have
+                  console.log('🎯 Selected card coins_mentioned:', selectedCard.coins_mentioned);
+                  console.log('📺 Selected card title:', selectedCard.title);
+                  console.log('🔍 Full selected card data:', selectedCard);
+                  
+                  return (
+                    <CryptoVideoSimulator
+                      videoId={selectedCard.id}
+                      videoTitle={selectedCard.title}
+                      publishDate={selectedCard.published_at}
+                      coinsMentioned={selectedCard.coins_mentioned || ['Bitcoin', 'Ethereum', 'Solana']}
+                      onProfitabilityChange={setIsProfitable}
+                    />
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer Stats */}
