@@ -18,6 +18,7 @@ export interface VideoItem {
   influencer: Influencer;
   watch_url?: string; // Added to support opening videos in new tabs
   short_summary?: string;
+  coins_mentioned?: string[];
 }
 
 export interface BubblePosition {
@@ -54,4 +55,6 @@ export interface ContentItem {
   views_count: number;
   publish_date: string;
   short_summary?: string;
+  coins_mentioned?: string[];
+  publish_status?: string;
 }

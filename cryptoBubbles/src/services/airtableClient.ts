@@ -1,8 +1,17 @@
 import axios from 'axios';
 
 // Airtable Configuration
-const AIRTABLE_BASE_ID = import.meta.env.VITE_AIRTABLE_BASE_ID;
-const AIRTABLE_API_KEY = import.meta.env.VITE_AIRTABLE_API_KEY;
+const CONTENT_ITEMS_BASE_ID = import.meta.env.VITE_CONTENT_ITEMS_AIRTABLE_BASE_ID;
+const CONTENT_ITEMS_API_KEY = import.meta.env.VITE_CONTENT_ITEMS_AIRTABLE_API_KEY;
+const CONTENT_ITEMS_TABLE_ID = import.meta.env.VITE_CONTENT_ITEMS_AIRTABLE_TABLE_ID;
+
+const INSTRUMENTS_BASE_ID = import.meta.env.VITE_INSTRUMENTS_ITEMS_AIRTABLE_BASE_ID;
+const INSTRUMENTS_API_KEY = import.meta.env.VITE_INSTRUMENTS_AIRTABLE_API_KEY;
+const INSTRUMENTS_TABLE_ID = import.meta.env.VITE_INSTRUMENTS_AIRTABLE_TABLE_ID;
+
+const PRICE_HISTORY_BASE_ID = import.meta.env.VITE_PRICE_HISTORY_AIRTABLE_BASE_ID;
+const PRICE_HISTORY_API_KEY = import.meta.env.VITE_PRICE_HISTORY_AIRTABLE_API_KEY;
+const PRICE_HISTORY_TABLE_ID = import.meta.env.VITE_PRICE_HISTORY_AIRTABLE_TABLE_ID;
 
 // Interfaces for type safety
 export interface CoinMetadata {
@@ -19,22 +28,25 @@ export interface HistoricalPrice {
 
 // Airtable API Client
 export class AirtableClient {
-  private baseUrl: string;
-  private headers: Record<string, string>;
-
-  constructor() {
-    this.baseUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}`;
-    this.headers = {
-      'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+  private getHeaders(apiKey: string): Record<string, string> {
+    return {
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     };
+  }
+
+  private getBaseUrl(baseId: string): string {
+    return `https://api.airtable.com/v0/${baseId}`;
   }
 
   // Fetch Coin Metadata from Instruments table
   async fetchCoinMetadata(): Promise<CoinMetadata[]> {
     try {
-      const response = await axios.get(`${this.baseUrl}/tbloUN2XCE2uOUTgG`, {
-        headers: this.headers,
+      const baseUrl = this.getBaseUrl(INSTRUMENTS_BASE_ID);
+      const headers = this.getHeaders(INSTRUMENTS_API_KEY);
+      
+      const response = await axios.get(`${baseUrl}/${INSTRUMENTS_TABLE_ID}`, {
+        headers,
         params: {
           // Optional: Add filtering or sorting if needed
           // view: 'Active Coins',
@@ -58,8 +70,11 @@ export class AirtableClient {
   // Fetch Historical Price Data for a specific coin
   async fetchHistoricalPrices(coinName: string, daysBack: number = 30): Promise<HistoricalPrice[]> {
     try {
-      const response = await axios.get(`${this.baseUrl}/tblXhhrCxFJiYmgqt`, {
-        headers: this.headers,
+      const baseUrl = this.getBaseUrl(PRICE_HISTORY_BASE_ID);
+      const headers = this.getHeaders(PRICE_HISTORY_API_KEY);
+      
+      const response = await axios.get(`${baseUrl}/${PRICE_HISTORY_TABLE_ID}`, {
+        headers,
         params: {
           // Filter by specific instrument (coin)
           filterByFormula: `SEARCH("${coinName}", {Instrument Relation})`,
@@ -114,8 +129,11 @@ export class AirtableClient {
   // Get price at specific date for investment simulation
   async getPriceAtDate(coinName: string, targetDate: string): Promise<number | null> {
     try {
-      const response = await axios.get(`${this.baseUrl}/tblXhhrCxFJiYmgqt`, {
-        headers: this.headers,
+      const baseUrl = this.getBaseUrl(PRICE_HISTORY_BASE_ID);
+      const headers = this.getHeaders(PRICE_HISTORY_API_KEY);
+      
+      const response = await axios.get(`${baseUrl}/${PRICE_HISTORY_TABLE_ID}`, {
+        headers,
         params: {
           filterByFormula: `AND(SEARCH("${coinName}", {Instrument Relation}), IS_SAME({Recorded At}, DATETIME_PARSE("${targetDate}", "YYYY-MM-DD"), "day"))`,
           maxRecords: 1
@@ -135,8 +153,11 @@ export class AirtableClient {
   // Get current price (most recent)
   async getCurrentPrice(coinName: string): Promise<number | null> {
     try {
-      const response = await axios.get(`${this.baseUrl}/tblXhhrCxFJiYmgqt`, {
-        headers: this.headers,
+      const baseUrl = this.getBaseUrl(PRICE_HISTORY_BASE_ID);
+      const headers = this.getHeaders(PRICE_HISTORY_API_KEY);
+      
+      const response = await axios.get(`${baseUrl}/${PRICE_HISTORY_TABLE_ID}`, {
+        headers,
         params: {
           filterByFormula: `SEARCH("${coinName}", {Instrument Relation})`,
           sort: [{ field: "Recorded At", direction: "desc" }],

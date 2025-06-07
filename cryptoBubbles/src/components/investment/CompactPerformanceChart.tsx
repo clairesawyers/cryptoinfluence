@@ -20,6 +20,24 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
     data: InvestmentDataPoint;
   } | null>(null);
 
+  // Show empty state if no investment data
+  if (investmentData.length === 0) {
+    return (
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <BarChart3 size={20} className="text-gray-500" />
+          <h3 className="text-lg font-semibold text-gray-100">Performance Chart</h3>
+        </div>
+        <div className="bg-gray-900 border-2 border-dashed border-gray-600 rounded-lg p-8 text-center">
+          <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
+            <BarChart3 size={24} className="text-gray-500" />
+          </div>
+          <div className="text-gray-400 text-sm">No performance data available</div>
+        </div>
+      </div>
+    );
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || investmentData.length === 0) return;
@@ -247,7 +265,7 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
           ref={canvasRef}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          className="w-full h-64 rounded cursor-crosshair"
+          className="w-full h-96 rounded cursor-crosshair"
           style={{ backgroundColor: '#111827' }}
         />
         

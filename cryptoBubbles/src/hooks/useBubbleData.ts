@@ -18,7 +18,10 @@ export const useBubbleData = (canvasSize: { width: number; height: number }) => 
 
   // Convert ContentItem to VideoItem for compatibility
   const contentItemToVideoItem = useCallback((item: ContentItem): VideoItem => {
-    return {
+    console.log('🔄 Converting ContentItem to VideoItem:', item.title);
+    console.log('🪙 ContentItem coins_mentioned:', item.coins_mentioned);
+    
+    const videoItem = {
       id: item.id,
       title: item.title,
       thumbnail_url: item.thumbnail_url,
@@ -28,12 +31,16 @@ export const useBubbleData = (canvasSize: { width: number; height: number }) => 
       like_count: Math.floor(item.views_count * 0.03), // Estimate likes as 3% of views
       watch_url: item.watch_url, // Include watch URL for opening videos
       short_summary: item.short_summary,
+      coins_mentioned: item.coins_mentioned, // Transfer coins mentioned
       influencer: {
         id: item.id,
         display_name: item.influencer_name,
         platform: 'youtube' as const, // Default to youtube for now
       }
     };
+    
+    console.log('🎯 VideoItem coins_mentioned:', videoItem.coins_mentioned);
+    return videoItem;
   }, []);
 
   // Define transformVideosToBubbles BEFORE it's used in loadData
@@ -74,6 +81,9 @@ export const useBubbleData = (canvasSize: { width: number; height: number }) => 
   }, [contentItemToVideoItem, transformVideosToBubbles]);
 
   const selectCard = useCallback((card: BubbleCard | null) => {
+    console.log('🎯 useBubbleData selectCard called with:', card?.title);
+    console.log('🪙 useBubbleData card coins_mentioned:', card?.coins_mentioned);
+    
     setState(prev => ({
       ...prev,
       bubbles: prev.bubbles.map(bubble => ({

@@ -1,4 +1,7 @@
 export const formatViewCount = (views: number): string => {
+  if (views === undefined || views === null || isNaN(views)) {
+    return '0';
+  }
   if (views >= 1000000) {
     return `${(views / 1000000).toFixed(1)}M`;
   } else if (views >= 1000) {

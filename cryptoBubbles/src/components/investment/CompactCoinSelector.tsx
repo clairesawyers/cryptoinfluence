@@ -111,8 +111,18 @@ export const CompactCoinSelector: React.FC<CompactCoinSelectorProps> = ({
       </div>
 
       {/* Responsive Grid Layout - Max 6 columns, auto-fit to take full width */}
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(coinsData.length, 6)}, 1fr)` }}>
-        {coinsData.map((coin) => (
+      {coinsData.length === 0 ? (
+        <div className="bg-gray-900 border-2 border-dashed border-gray-600 rounded-lg p-8 text-center">
+          <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
+            <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+          </div>
+          <div className="text-gray-400 text-sm">No cryptocurrencies available</div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(coinsData.length, 6)}, 1fr)` }}>
+          {coinsData.map((coin) => (
           <div
             key={coin.symbol}
             className={`relative bg-gray-900 rounded-lg p-3 transition-all duration-200 cursor-pointer ${
@@ -134,8 +144,32 @@ export const CompactCoinSelector: React.FC<CompactCoinSelectorProps> = ({
             {/* Coin Info */}
             <div className="mb-2">
               <div className="flex flex-col items-center text-center mb-2">
-                <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center mb-1">
-                  <span className="text-xs font-bold text-gray-300">{coin.symbol}</span>
+                <div className="w-6 h-6 mb-1 flex items-center justify-center relative">
+                  {coin.logoUrl && coin.logoUrl.trim() !== '' ? (
+                    <>
+                      <img 
+                        src={coin.logoUrl} 
+                        alt={`${coin.name} logo`}
+                        className="w-6 h-6 rounded-full object-cover"
+                        onError={(e) => {
+                          // Fallback to letter circle if image fails to load
+                          const target = e.currentTarget as HTMLImageElement;
+                          target.style.display = 'none';
+                          const fallback = target.parentElement?.querySelector('.fallback-logo') as HTMLElement;
+                          if (fallback) {
+                            fallback.style.display = 'flex';
+                          }
+                        }}
+                      />
+                      <div className="fallback-logo w-6 h-6 bg-gray-700 rounded-full items-center justify-center absolute inset-0" style={{ display: 'none' }}>
+                        <span className="text-xs font-bold text-gray-300">{coin.symbol}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center">
+                      <span className="text-xs font-bold text-gray-300">{coin.symbol}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="text-xs font-medium text-gray-200 truncate">{coin.name}</div>
                 <div className="text-xs text-gray-500">{coin.category}</div>
@@ -143,12 +177,14 @@ export const CompactCoinSelector: React.FC<CompactCoinSelectorProps> = ({
 
               {/* Price Performance */}
               <div className="flex items-center justify-center">
-                <div className={`flex items-center gap-1 text-xs ${
-                  coin.priceChange >= 0 ? 'text-success-400' : 'text-loss-400'
-                }`}>
-                  {coin.priceChange >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                  <span className="text-xs">{formatPercentage(Math.abs(coin.priceChange))}</span>
-                </div>
+                {coin.currentPrice !== undefined && coin.currentPrice !== null ? (
+                  <div className={`flex items-center gap-1 text-xs ${
+                    coin.priceChange >= 0 ? 'text-success-400' : 'text-loss-400'
+                  }`}>
+                    {coin.priceChange >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                    <span className="text-xs">{formatPercentage(Math.abs(coin.priceChange))}</span>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -195,7 +231,8 @@ export const CompactCoinSelector: React.FC<CompactCoinSelectorProps> = ({
             )}
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Validation Message */}
       {investmentMode === 'custom' && !isValidAllocation && (

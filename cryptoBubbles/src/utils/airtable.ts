@@ -1,12 +1,20 @@
 // src/utils/airtable.ts
 import type { VideoItem, Influencer, ContentItem } from '../types';
 
+// Legacy configuration for videos
 const BASE_URL = `https://api.airtable.com/v0/${
   import.meta.env.VITE_AIRTABLE_BASE_ID
 }`;
 
 const VIDEOS_URL = `${BASE_URL}/${encodeURIComponent(import.meta.env.VITE_AIRTABLE_TABLE_ID)}`;
-const CONTENT_ITEMS_URL = `${BASE_URL}/Content%20Items`;
+
+// New Content Items configuration
+const CONTENT_ITEMS_BASE_URL = `https://api.airtable.com/v0/${
+  import.meta.env.VITE_CONTENT_ITEMS_AIRTABLE_BASE_ID
+}`;
+const CONTENT_ITEMS_URL = `${CONTENT_ITEMS_BASE_URL}/${
+  import.meta.env.VITE_CONTENT_ITEMS_AIRTABLE_TABLE_ID
+}`;
 
 // Helper function to build date filter for Airtable
 function buildDateFilter(selectedDate: Date, viewMode: 'day' | 'week' | 'month'): string {
@@ -16,13 +24,15 @@ function buildDateFilter(selectedDate: Date, viewMode: 'day' | 'week' | 'month')
 
   let startDate: Date;
   let endDate: Date;
+  let dateFilter: string;
 
   switch (viewMode) {
     case 'day':
       // For day mode, just match the exact date
       const dayStr = formatDate(selectedDate);
       console.log('📊 Filtering for exact date:', dayStr);
-      return `{Publish Date} = '${dayStr}'`;
+      dateFilter = `{Publish Date} = '${dayStr}'`;
+      break;
     
     case 'week':
       // Get start of week (Sunday)
@@ -31,6 +41,10 @@ function buildDateFilter(selectedDate: Date, viewMode: 'day' | 'week' | 'month')
       // Get end of week (Saturday)
       endDate = new Date(startDate);
       endDate.setDate(startDate.getDate() + 6);
+      const weekStartStr = formatDate(startDate);
+      const weekEndStr = formatDate(endDate);
+      console.log('📊 Date range:', weekStartStr, 'to', weekEndStr);
+      dateFilter = `AND({Publish Date} >= '${weekStartStr}', {Publish Date} <= '${weekEndStr}')`;
       break;
     
     case 'month':
@@ -38,19 +52,22 @@ function buildDateFilter(selectedDate: Date, viewMode: 'day' | 'week' | 'month')
       startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
       // Get end of month
       endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+      const monthStartStr = formatDate(startDate);
+      const monthEndStr = formatDate(endDate);
+      console.log('📊 Date range:', monthStartStr, 'to', monthEndStr);
+      dateFilter = `AND({Publish Date} >= '${monthStartStr}', {Publish Date} <= '${monthEndStr}')`;
       break;
     
     default:
-      return '';
+      dateFilter = '';
   }
 
-  // For week/month, use date range
-  const startDateStr = formatDate(startDate);
-  const endDateStr = formatDate(endDate);
-  
-  console.log('📊 Date range:', startDateStr, 'to', endDateStr);
-  
-  return `AND({Publish Date} >= '${startDateStr}', {Publish Date} <= '${endDateStr}')`;
+  // Always add the Publish Status = "Active" filter
+  if (dateFilter) {
+    return `AND(${dateFilter}, {Publish Status} = 'Active')`;
+  } else {
+    return `{Publish Status} = 'Active'`;
+  }
 }
 
 // Test function to list all tables in the base
@@ -176,33 +193,44 @@ export async function fetchVideosFromAirtable(limit: number): Promise<VideoItem[
 
 export async function fetchContentItems(selectedDate?: Date, viewMode?: 'day' | 'week' | 'month'): Promise<ContentItem[]> {
   try {
+    console.log('📦 fetchContentItems: Starting fetch...');
+    console.log('🔑 Using Content Items Base ID:', import.meta.env.VITE_CONTENT_ITEMS_AIRTABLE_BASE_ID);
+    console.log('📋 Using Content Items Table ID:', import.meta.env.VITE_CONTENT_ITEMS_AIRTABLE_TABLE_ID);
+    console.log('🌐 Content Items URL:', CONTENT_ITEMS_URL);
+    
     const params = new URLSearchParams({
       'sort[0][field]': 'Publish Date',
       'sort[0][direction]': 'desc'
     });
 
-    // Add date filtering if selectedDate is provided
+    // Add filtering - always filter for Active status
+    let filterFormula: string;
     if (selectedDate && viewMode) {
-      const dateFilter = buildDateFilter(selectedDate, viewMode);
+      filterFormula = buildDateFilter(selectedDate, viewMode);
       console.log('🗓️ Selected date:', selectedDate.toISOString());
       console.log('📅 View mode:', viewMode);
-      console.log('🔍 Date filter formula:', dateFilter);
-      if (dateFilter) {
-        params.append('filterByFormula', dateFilter);
-      }
     } else {
-      console.log('❌ No date filtering - selectedDate:', selectedDate, 'viewMode:', viewMode);
+      // Even without date filtering, still filter for Active status
+      filterFormula = `{Publish Status} = 'Active'`;
+      console.log('📊 No date filtering, but filtering for Active status only');
     }
+    
+    console.log('🔍 Filter formula:', filterFormula);
+    params.append('filterByFormula', filterFormula);
 
+    console.log('🚀 Making request to:', `${CONTENT_ITEMS_URL}?${params}`);
+    
     const res = await fetch(`${CONTENT_ITEMS_URL}?${params}`, {
       headers: {
-        Authorization: `Bearer ${import.meta.env.VITE_AIRTABLE_API_KEY}`
+        Authorization: `Bearer ${import.meta.env.VITE_CONTENT_ITEMS_AIRTABLE_API_KEY}`
       }
     });
     
+    console.log('📡 Response status:', res.status, res.statusText);
+    
     if (!res.ok) {
       const err = await res.json();
-      console.error('Error fetching content items:', err);
+      console.error('❌ Error fetching content items:', err);
       return [];
     }
 
@@ -216,18 +244,50 @@ export async function fetchContentItems(selectedDate?: Date, viewMode?: 'day' | 
     console.log('📦 Filtered records returned:', data.records?.length || 0);
     if (data.records?.length > 0) {
       console.log('📅 Sample record dates:', data.records.slice(0, 3).map(r => r.fields['Publish Date']));
+      console.log('🪙 Sample record coins mentioned:', data.records.slice(0, 3).map(r => r.fields['Coins Mentioned']));
+      console.log('🖼️ First record fields:', Object.keys(data.records[0].fields));
+      console.log('🔍 First record raw data:', data.records[0].fields);
     }
     
-    return data.records.map(record => ({
-      id: record.id,
-      thumbnail_url: record.fields['Thumbnail'] as string,
-      title: record.fields['Title'] as string,
-      influencer_name: record.fields['Influencer Name'] as string,
-      watch_url: record.fields['Watch URL'] as string,
-      views_count: record.fields['Views Count'] as number,
-      publish_date: record.fields['Publish Date'] as string,
-      short_summary: record.fields['Short Summary'] as string | undefined,
-    }));
+    return data.records.map(record => {
+      // Check if Thumbnail is an array (like in the legacy code)
+      const thumbnailField = record.fields['Thumbnail'];
+      let thumbnailUrl: string = '';
+      
+      if (Array.isArray(thumbnailField) && thumbnailField.length > 0) {
+        // If it's an array of attachment objects
+        thumbnailUrl = thumbnailField[0].url || thumbnailField[0] || '';
+      } else if (typeof thumbnailField === 'string') {
+        // If it's a direct string URL
+        thumbnailUrl = thumbnailField;
+      } else if (thumbnailField && typeof thumbnailField === 'object' && 'url' in thumbnailField) {
+        // If it's an object with a url property
+        thumbnailUrl = (thumbnailField as any).url;
+      }
+      
+      const contentItem = {
+        id: record.id,
+        thumbnail_url: thumbnailUrl,
+        title: record.fields['Title'] as string,
+        influencer_name: record.fields['Influencer Name'] as string,
+        watch_url: record.fields['Watch URL'] as string,
+        views_count: record.fields['Views Count'] as number,
+        publish_date: record.fields['Publish Date'] as string,
+        short_summary: record.fields['Short Summary'] as string | undefined,
+        coins_mentioned: record.fields['Coins Mentioned'] as string[] | undefined,
+        publish_status: record.fields['Publish Status'] as string | undefined,
+      };
+      
+      // Debug log each content item
+      console.log('📋 Content Item:', contentItem.title);
+      console.log('🖼️ Thumbnail URL:', contentItem.thumbnail_url);
+      console.log('🔍 Raw Thumbnail field:', thumbnailField);
+      console.log('✅ Publish Status:', contentItem.publish_status);
+      console.log('🪙 Raw Coins Mentioned field:', record.fields['Coins Mentioned']);
+      console.log('🏷️ Available fields:', Object.keys(record.fields));
+      
+      return contentItem;
+    });
   } catch (error) {
     console.error('💥 Error fetching content items:', error);
     return [];

@@ -25,6 +25,7 @@ export interface CoinData {
   currentPrice: number;
   priceChange: number;
   returnAmount: number;
+  logoUrl?: string;
 }
 
 export interface VideoData {
@@ -45,9 +46,12 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
   videoId,
   videoTitle,
   publishDate,
-  coinsMentioned = ['Bitcoin', 'Ethereum', 'Solana', 'Cardano', 'Polygon', 'Polkadot'], // Default coins
+  coinsMentioned = ['Bitcoin', 'Ethereum', 'Solana'], // Reduced default coins
   onProfitabilityChange
 }) => {
+  // Debug log to see what coins are being passed
+  console.log('🪙 CryptoVideoSimulator received coinsMentioned:', coinsMentioned);
+  console.log('📺 Video:', videoTitle);
   const FIXED_INVESTMENT = 1000;
   const [investmentDelay, setInvestmentDelay] = useState<'1hour' | '1day' | '1week'>('1day');
   const [investmentMode, setInvestmentMode] = useState<'equal' | 'custom'>('equal');
@@ -178,9 +182,54 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
     );
   }
 
+  // Show empty state if no coins are available
+  if (!isLoading && coinsData.length === 0) {
+    return (
+      <div className="h-full overflow-y-auto p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-8">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-100 mb-2">No Cryptocurrencies Mentioned</h3>
+              <p className="text-gray-400 text-sm max-w-md mx-auto">
+                This video doesn't have any cryptocurrency mentions available for investment simulation.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full overflow-y-auto p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="h-full overflow-y-auto p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Initial Investment Section */}
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-100 mb-4">Initial Investment</h3>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-gray-300 min-w-[120px]">Initial Investment</label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-400">$</span>
+                <div className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm font-medium text-gray-300">
+                  1,000
+                </div>
+                <span className="text-xs text-gray-500">(uneditable)</span>
+              </div>
+            </div>
+            
+            <div className="text-sm text-gray-400">
+              Distribute amongst top mentioned cryptocurrencies.
+            </div>
+          </div>
+        </div>
+
         {/* Coin Selection */}
         <CompactCoinSelector
           coinsData={coinsData}
@@ -192,76 +241,6 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
           onModeChange={setInvestmentMode}
         />
 
-        {/* Header - Performance Summary */}
-        <div className="max-w-lg">
-          {/* Performance Summary */}
-          <div className={`relative bg-gradient-to-br from-gray-800 via-gray-850 to-gray-900 border-2 rounded-xl p-6 shadow-2xl ${
-            totalReturn >= 0 
-              ? 'border-success-500/30 shadow-success-500/10' 
-              : 'border-loss-500/30 shadow-loss-500/10'
-          }`}>
-            {/* Subtle glow effect */}
-            <div className={`absolute inset-0 rounded-xl opacity-20 ${
-              totalReturn >= 0 ? 'bg-success-500/5' : 'bg-loss-500/5'
-            }`}></div>
-            
-            {/* Header with icon */}
-            <div className="relative flex items-center gap-3 mb-4">
-              <div className={`p-2 rounded-lg ${
-                totalReturn >= 0 
-                  ? 'bg-success-500/20 text-success-400' 
-                  : 'bg-loss-500/20 text-loss-400'
-              }`}>
-                {totalReturn >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
-              </div>
-              <div>
-                <h3 className="text-base font-semibold text-gray-100">Investment Summary</h3>
-                <p className="text-xs text-gray-400">Open Position • Real-time</p>
-              </div>
-            </div>
-
-            <div className="relative space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-400">Initial Investment:</span>
-                <span className="text-sm font-semibold text-gray-100">{formatCurrencyFull(FIXED_INVESTMENT)}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-400">Current Value:</span>
-                <span className="text-base font-bold text-gray-100">
-                  {formatCurrencyFull(investmentData[investmentData.length - 1]?.value || FIXED_INVESTMENT)}
-                </span>
-              </div>
-              
-              {/* Prominent return display */}
-              <div className={`flex items-center justify-between p-3 rounded-lg border ${
-                totalReturn >= 0 
-                  ? 'bg-success-500/10 border-success-500/20' 
-                  : 'bg-loss-500/10 border-loss-500/20'
-              }`}>
-                <span className="text-sm font-medium text-gray-300">Total Return:</span>
-                <div className={`flex items-center gap-2 ${totalReturn >= 0 ? 'text-success-400' : 'text-loss-400'}`}>
-                  {totalReturn >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                  <div className="text-right">
-                    <div className="text-lg font-bold">
-                      {totalReturn >= 0 ? '+' : ''}{formatCurrencyFull(totalReturn)}
-                    </div>
-                    <div className="text-sm font-medium">
-                      ({totalReturn >= 0 ? '+' : ''}{formatPercentage(returnPercentage)})
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Animated border glow */}
-            <div className={`absolute inset-0 rounded-xl pointer-events-none ${
-              totalReturn >= 0 
-                ? 'shadow-lg shadow-success-500/5' 
-                : 'shadow-lg shadow-loss-500/5'
-            }`}></div>
-          </div>
-        </div>
 
         {/* Performance Chart */}
         <CompactPerformanceChart
