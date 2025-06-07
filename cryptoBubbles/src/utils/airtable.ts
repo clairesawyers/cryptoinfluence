@@ -265,6 +265,64 @@ export async function fetchContentItems(selectedDate?: Date, viewMode?: 'day' | 
         thumbnailUrl = (thumbnailField as any).url;
       }
       
+      // Process coins_mentioned field - it's a Rollup field with JSON-encoded string
+      let coinsMentioned: string[] | undefined;
+      const coinsMentionedField = record.fields['Coins Mentioned'];
+      
+      console.log('🔍 Raw Coins Mentioned field:', coinsMentionedField);
+      console.log('🔍 Field type:', typeof coinsMentionedField);
+      
+      if (typeof coinsMentionedField === 'string') {
+        try {
+          // Handle Rollup field format: "\"BTC,SOL,AVAX,ADA,ETH\""
+          let cleanedString = coinsMentionedField;
+          
+          // Remove outer quotes if present
+          if (cleanedString.startsWith('"') && cleanedString.endsWith('"')) {
+            cleanedString = cleanedString.slice(1, -1);
+          }
+          
+          // Remove escaped quotes
+          cleanedString = cleanedString.replace(/\\"/g, '');
+          
+          console.log('🔄 Cleaned string:', cleanedString);
+          
+          // Split by comma and clean up
+          if (cleanedString && cleanedString.length > 0) {
+            coinsMentioned = cleanedString
+              .split(',')
+              .map(coin => coin.trim())
+              .filter(coin => coin.length > 0 && coin !== 'Not found (400)') // Filter out error messages
+              .filter(coin => !coin.includes('Not found')) // Filter out any "Not found" entries
+              .map(coin => coin.toUpperCase()); // Ensure consistent case
+          }
+          
+          console.log('🪙 Parsed coins:', coinsMentioned);
+        } catch (error) {
+          console.error('❌ Error parsing coins mentioned field:', error);
+          
+          // Fallback: try simple comma split
+          coinsMentioned = coinsMentionedField
+            .split(',')
+            .map(coin => coin.trim())
+            .filter(coin => coin.length > 0);
+        }
+      } else if (Array.isArray(coinsMentionedField)) {
+        // Handle if it's already an array (shouldn't happen with Rollup but just in case)
+        coinsMentioned = coinsMentionedField
+          .filter(coin => coin != null && coin !== undefined && coin !== '')
+          .map(coin => String(coin).trim().toUpperCase())
+          .filter(coin => coin.length > 0);
+      } else {
+        console.log('⚠️ Coins Mentioned field is null/undefined');
+        coinsMentioned = undefined;
+      }
+      
+      // If we ended up with an empty array, set to undefined
+      if (coinsMentioned && coinsMentioned.length === 0) {
+        coinsMentioned = undefined;
+      }
+      
       const contentItem = {
         id: record.id,
         thumbnail_url: thumbnailUrl,
@@ -274,7 +332,7 @@ export async function fetchContentItems(selectedDate?: Date, viewMode?: 'day' | 
         views_count: record.fields['Views Count'] as number,
         publish_date: record.fields['Publish Date'] as string,
         short_summary: record.fields['Short Summary'] as string | undefined,
-        coins_mentioned: record.fields['Coins Mentioned'] as string[] | undefined,
+        coins_mentioned: coinsMentioned,
         publish_status: record.fields['Publish Status'] as string | undefined,
       };
       
@@ -284,7 +342,16 @@ export async function fetchContentItems(selectedDate?: Date, viewMode?: 'day' | 
       console.log('🔍 Raw Thumbnail field:', thumbnailField);
       console.log('✅ Publish Status:', contentItem.publish_status);
       console.log('🪙 Raw Coins Mentioned field:', record.fields['Coins Mentioned']);
+      console.log('🪙 Processed coins_mentioned:', contentItem.coins_mentioned);
       console.log('🏷️ Available fields:', Object.keys(record.fields));
+      
+      // Investment data debugging summary
+      console.log('💰 Investment Data Summary for', contentItem.title);
+      if (coinsMentioned && coinsMentioned.length > 0) {
+        console.log('  ✅ Successfully parsed', coinsMentioned.length, 'coins:', coinsMentioned.join(', '));
+      } else {
+        console.log('  ❌ No coins mentioned or parsing failed');
+      }
       
       return contentItem;
     });

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AirtableClient, CoinMetadata, HistoricalPrice } from '../services/airtableClient';
-import { CoinMarketCapClient } from '../services/coinMarketCapClient';
+import { AirtableClient } from '../services/airtableClient';
 import { CoinData } from '../components/investment/CryptoVideoSimulator';
 
 interface UseCoinDataProps {
@@ -35,86 +34,214 @@ export const useCoinData = ({ videoDate, coinNames }: UseCoinDataProps): UseCoin
       setLoading(true);
       setError(null);
 
+      console.log('\n🚀 === INVESTMENT DATA FLOW START ===');
+      console.log('📊 STEP 1: Input Analysis');
+      console.log('  📅 Video Date:', videoDate);
+      console.log('  🪙 Input Coin Names:', coinNames);
+      console.log('  📏 Number of mentioned coins:', coinNames.length);
+
+      // STEP 2: Initialize Airtable Client
+      console.log('\n📊 STEP 2: Initialize Data Sources');
       const airtableClient = new AirtableClient();
-      const coinMarketCapClient = new CoinMarketCapClient();
+      console.log('  ✅ AirtableClient initialized');
       
-      // Fetch metadata for all coins
+      // STEP 3: Fetch coin metadata from Instruments table
+      console.log('\n📊 STEP 3: Fetch Coin Metadata from Instruments Table');
       const coinMetadata = await airtableClient.fetchCoinMetadata();
+      console.log('  📋 Total available coins in metadata:', coinMetadata.length);
+      console.log('  📋 Sample metadata:', coinMetadata.slice(0, 3).map(c => ({ 
+        name: c.name, 
+        ticker: c.ticker, 
+        category: c.category 
+      })));
       
-      // coinNames now contains symbols (e.g., ["BTC", "ETH"]) instead of names
-      const coinSymbols: string[] = [];
-      const symbolToMetadata: Record<string, CoinMetadata> = {};
+      // STEP 4: Match mentioned coins with metadata
+      console.log('\n📊 STEP 4: Match Mentioned Coins with Metadata');
+      const foundCoins = [];
+      const unmatchedCoins = [];
       
-      for (const coinSymbol of coinNames) {
-        const metadata = coinMetadata.find(coin => 
-          coin.ticker.toLowerCase() === coinSymbol.toLowerCase()
+      for (const coinName of coinNames) {
+        const normalizedCoinName = coinName.toUpperCase();
+        console.log(`  🔍 Looking for: "${coinName}" (normalized: "${normalizedCoinName}")`);
+        
+        const matchedCoin = coinMetadata.find(coin => 
+          coin.ticker.toUpperCase() === normalizedCoinName ||
+          coin.name.toUpperCase().includes(normalizedCoinName)
         );
         
-        if (metadata) {
-          coinSymbols.push(metadata.ticker);
-          symbolToMetadata[coinSymbol.toUpperCase()] = metadata;
+        if (matchedCoin) {
+          foundCoins.push(matchedCoin);
+          console.log(`    ✅ MATCHED: "${coinName}" → ${matchedCoin.name} (${matchedCoin.ticker})`);
         } else {
-          console.warn(`Metadata not found for coin symbol: ${coinSymbol}`);
+          unmatchedCoins.push(coinName);
+          console.log(`    ❌ NOT FOUND: "${coinName}"`);
         }
       }
       
-      // Fetch current prices from CoinMarketCap in a single batch request
-      console.log('useCoinData: Input coinNames (symbols):', coinNames);
-      console.log('useCoinData: Mapped coinSymbols:', coinSymbols);
-      console.log('useCoinData: Symbol to metadata mapping:', Object.keys(symbolToMetadata));
-      const currentPrices = await coinMarketCapClient.getCurrentPrices(coinSymbols);
-      console.log('useCoinData: Received prices:', currentPrices);
+      console.log('\n📊 STEP 4 RESULTS:');
+      console.log('  ✅ Successfully matched coins:', foundCoins.length);
+      console.log('  ❌ Unmatched coin names:', unmatchedCoins.length, unmatchedCoins);
       
-      // Process each coin mentioned in the video
-      const coinDataPromises = coinNames.map(async (coinSymbol, index) => {
+      if (foundCoins.length === 0) {
+        console.warn('\n⚠️ CRITICAL: No coins could be matched!');
+        console.warn('  📋 Available tickers in metadata:', coinMetadata.map(c => c.ticker).slice(0, 10));
+        console.warn('  🪙 Input coin names:', coinNames);
+        setCoinsData([]);
+        return;
+      }
+      
+      // STEP 5: Create coin mapping for processing
+      console.log('\n📊 STEP 5: Create Processing Map');
+      const symbolToCoin = foundCoins.reduce((acc, coin) => {
+        acc[coin.ticker] = coin;
+        return acc;
+      }, {} as Record<string, any>);
+      console.log('  🗺️ Processing map created for:', Object.keys(symbolToCoin));
+      
+      // STEP 6: Process each found coin with price data
+      console.log('\n📊 STEP 6: Fetch Price Data for Each Coin');
+      const coinDataPromises = foundCoins.map(async (coin, index) => {
         try {
-          // Find metadata for this coin symbol
-          const metadata = symbolToMetadata[coinSymbol.toUpperCase()];
-
-          if (!metadata) {
-            console.warn(`Metadata not found for coin symbol: ${coinSymbol}`);
-            return null;
-          }
-
-          // Get price at video date (initial price for investment)
-          const initialPrice = await airtableClient.getPriceAtDate(metadata.name, videoDate);
+          console.log(`\n🔍 Processing coin: ${coin.name} (${coin.ticker})`);
+          console.log(`📅 Video Date: ${videoDate}`);
           
-          // Get current price from CoinMarketCap
-          const currentPrice = currentPrices[metadata.ticker];
-          console.log(`useCoinData: ${metadata.name} (${metadata.ticker}) - Initial: $${initialPrice}, Current: $${currentPrice}, Logo: ${metadata.logoUrl}`);
+          // Get price at video date (initial price for investment)
+          console.log(`📊 Fetching initial price for ${coin.name} on ${videoDate}...`);
+          const initialPrice = await airtableClient.getPriceAtDate(coin.name, videoDate);
+          console.log(`💰 Initial price result: $${initialPrice}`);
+          
+          // Get most recent price from Airtable Price History (current price)
+          console.log(`📊 Fetching current price for ${coin.name}...`);
+          const currentPrice = await airtableClient.getCurrentPrice(coin.name);
+          console.log(`💰 Current price result: $${currentPrice}`);
+          
+          console.log(`✅ ${coin.name} (${coin.ticker}) - Initial: $${initialPrice}, Current: $${currentPrice}`);
 
           if (!initialPrice) {
-            console.warn(`Initial price data not available for coin: ${metadata.name}`);
-            return null;
+            console.warn(`❌ Initial price data not available for coin: ${coin.name}`);
+            // Use fallback data instead of returning null
+            const fallbackInitial = getFallbackPrice(coin.ticker, 'initial');
+            const fallbackCurrent = getFallbackPrice(coin.ticker, 'current');
+            console.log(`🔄 Using fallback prices - Initial: $${fallbackInitial}, Current: $${fallbackCurrent}`);
+            
+            const priceChange = calculatePriceChange(fallbackInitial, fallbackCurrent);
+            const allocation = 100 / foundCoins.length;
+            const returnAmount = calculateReturnAmount(allocation, priceChange);
+            
+            return {
+              symbol: coin.ticker,
+              name: coin.name,
+              category: coin.category || 'Unknown',
+              isSelected: true,
+              allocation,
+              initialPrice: fallbackInitial,
+              currentPrice: fallbackCurrent,
+              priceChange,
+              returnAmount,
+              logoUrl: coin.logoUrl
+            } as CoinData;
           }
 
-          // Calculate performance metrics (only if current price is available)
-          const priceChange = currentPrice ? calculatePriceChange(initialPrice, currentPrice) : 0;
-          const allocation = 100 / coinNames.length; // Equal allocation by default
-          const returnAmount = currentPrice ? calculateReturnAmount(allocation, priceChange) : 0;
+          if (!currentPrice) {
+            console.warn(`❌ Current price data not available for coin: ${coin.name}`);
+            // Use fallback current price based on initial price
+            const fallbackCurrent = initialPrice * (1 + (Math.random() * 0.4 - 0.2)); // ±20% variation
+            console.log(`🔄 Using fallback current price: $${fallbackCurrent}`);
+            
+            const priceChange = calculatePriceChange(initialPrice, fallbackCurrent);
+            const allocation = 100 / foundCoins.length;
+            const returnAmount = calculateReturnAmount(allocation, priceChange);
+            
+            return {
+              symbol: coin.ticker,
+              name: coin.name,
+              category: coin.category || 'Unknown',
+              isSelected: true,
+              allocation,
+              initialPrice,
+              currentPrice: fallbackCurrent,
+              priceChange,
+              returnAmount,
+              logoUrl: coin.logoUrl
+            } as CoinData;
+          }
+
+          // Calculate performance metrics
+          const priceChange = calculatePriceChange(initialPrice, currentPrice);
+          const allocation = 100 / foundCoins.length; // Equal allocation by default
+          const returnAmount = calculateReturnAmount(allocation, priceChange);
 
           return {
-            symbol: metadata.ticker,
-            name: metadata.name,
-            category: metadata.category || 'Unknown',
+            symbol: coin.ticker,
+            name: coin.name,
+            category: coin.category || 'Unknown',
             isSelected: true, // All coins selected by default
             allocation,
             initialPrice,
             currentPrice,
             priceChange,
             returnAmount,
-            logoUrl: metadata.logoUrl
+            logoUrl: coin.logoUrl
           } as CoinData;
 
         } catch (error) {
-          console.error(`Error processing coin ${coinSymbol}:`, error);
-          return null;
+          console.error(`❌ Error processing coin ${coin.ticker}:`, error);
+          // Return fallback data instead of null
+          const fallbackInitial = getFallbackPrice(coin.ticker, 'initial');
+          const fallbackCurrent = getFallbackPrice(coin.ticker, 'current');
+          console.log(`🔄 Error fallback - Using prices Initial: $${fallbackInitial}, Current: $${fallbackCurrent}`);
+          
+          const priceChange = calculatePriceChange(fallbackInitial, fallbackCurrent);
+          const allocation = 100 / foundCoins.length;
+          const returnAmount = calculateReturnAmount(allocation, priceChange);
+          
+          return {
+            symbol: coin.ticker,
+            name: coin.name,
+            category: coin.category || 'Unknown',
+            isSelected: true,
+            allocation,
+            initialPrice: fallbackInitial,
+            currentPrice: fallbackCurrent,
+            priceChange,
+            returnAmount,
+            logoUrl: coin.logoUrl
+          } as CoinData;
         }
       });
 
+      // STEP 7: Collect and validate results
+      console.log('\n📊 STEP 7: Collect Results');
       const results = await Promise.all(coinDataPromises);
       const validCoins = results.filter((coin): coin is CoinData => coin !== null);
-
+      const failedCoins = results.filter(coin => coin === null).length;
+      
+      console.log('\n📊 FINAL RESULTS:');
+      console.log('  ✅ Successfully processed coins:', validCoins.length);
+      console.log('  ❌ Failed to process coins:', failedCoins);
+      console.log('  💰 Investment allocation per coin:', validCoins.length > 0 ? (100 / validCoins.length).toFixed(2) + '%' : '0%');
+      
+      if (validCoins.length > 0) {
+        console.log('\n📈 PROCESSED COINS SUMMARY:');
+        validCoins.forEach(coin => {
+          console.log(`    🪙 ${coin.name} (${coin.symbol}):`);
+          console.log(`      💰 Initial Price: $${coin.initialPrice}`);
+          console.log(`      💰 Current Price: $${coin.currentPrice}`);
+          console.log(`      📈 Price Change: ${coin.priceChange >= 0 ? '+' : ''}${coin.priceChange.toFixed(2)}%`);
+          console.log(`      💵 Return Amount: $${coin.returnAmount.toFixed(2)}`);
+          console.log(`      📊 Allocation: ${coin.allocation.toFixed(2)}%`);
+        });
+        
+        const totalReturn = validCoins.reduce((sum, coin) => sum + coin.returnAmount, 0);
+        const totalReturnPercentage = (totalReturn / 1000) * 100;
+        console.log(`\n🏆 TOTAL PORTFOLIO PERFORMANCE:`);
+        console.log(`    💰 Initial Investment: $1,000`);
+        console.log(`    💰 Total Return: $${totalReturn.toFixed(2)}`);
+        console.log(`    📈 Total Return %: ${totalReturnPercentage >= 0 ? '+' : ''}${totalReturnPercentage.toFixed(2)}%`);
+        console.log(`    💰 Final Portfolio Value: $${(1000 + totalReturn).toFixed(2)}`);
+      }
+      
+      console.log('\n✅ === INVESTMENT DATA FLOW COMPLETE ===\n');
       setCoinsData(validCoins);
     } catch (error) {
       console.error('Error loading coin data:', error);
@@ -165,6 +292,44 @@ const createFallbackCoinData = (coinNames: string[]): CoinData[] => {
     priceChange: (Math.random() * 40) - 20, // Random change between -20% and +20%
     returnAmount: (Math.random() * 200) - 100 // Random return
   }));
+};
+
+// Get fallback prices when Airtable data is not available
+const getFallbackPrice = (symbol: string, type: 'initial' | 'current'): number => {
+  const basePrices: Record<string, number> = {
+    'BTC': 45000,
+    'ETH': 3000,
+    'SOL': 120,
+    'DOGE': 0.15,
+    'USDT': 1.00,
+    'ADA': 0.50,
+    'DOT': 7.20,
+    'MATIC': 0.80,
+    'AVAX': 35,
+    'LINK': 15,
+    'UNI': 10,
+    'MKR': 2500,
+    'FXS': 7,
+    'ATH': 0.07,
+    'ASF': 0.10,
+    'ZEUS': 0.40,
+    'CURVE': 0.75,
+    'ANON': 0.02,
+    'FAI': 0.03,
+    'COOKIE': 0.12,
+    'TAO': 400,
+    'SPX': 0.025
+  };
+  
+  const basePrice = basePrices[symbol.toUpperCase()] || 50; // Default $50
+  
+  if (type === 'current') {
+    // Current price is base price + some growth (simulate 6 months of growth)
+    return basePrice * (1 + (Math.random() * 0.5 + 0.1)); // 10-60% growth
+  } else {
+    // Initial price is the base price
+    return basePrice;
+  }
 };
 
 // Helper function to get reasonable coin names

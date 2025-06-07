@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Clock, BarChart3, AlertTriangle, ChevronDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, BarChart3, AlertTriangle, ChevronDown, Settings } from 'lucide-react';
 import { CompactCoinSelector } from './CompactCoinSelector';
 import { CompactPerformanceChart } from './CompactPerformanceChart';
 import { StrategyComparison } from './StrategyComparison';
+import { LiveDataSimulator } from './LiveDataSimulator';
+import { ErrorBoundary } from '../ErrorBoundary';
 import { formatCurrencyFull, formatPercentage } from '../../utils/formatting';
 import { useCoinData } from '../../hooks/useCoinData';
 import { useInvestmentData } from '../../hooks/useInvestmentData';
@@ -50,13 +52,20 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
   onProfitabilityChange
 }) => {
   // Debug log to see what coins are being passed
-  console.log('🪙 CryptoVideoSimulator received coinsMentioned:', coinsMentioned);
+  console.log('🚀 CryptoVideoSimulator initialized');
+  console.log('🪙 Received coinsMentioned:', coinsMentioned);
+  console.log('  - Type:', typeof coinsMentioned);
+  console.log('  - Is Array?:', Array.isArray(coinsMentioned));
+  console.log('  - Length:', coinsMentioned?.length);
+  console.log('  - Raw value:', JSON.stringify(coinsMentioned));
   console.log('📺 Video:', videoTitle);
+  console.log('📅 Publish Date:', publishDate);
   const FIXED_INVESTMENT = 1000;
   const [investmentDelay, setInvestmentDelay] = useState<'1hour' | '1day' | '1week'>('1day');
   const [investmentMode, setInvestmentMode] = useState<'equal' | 'custom'>('equal');
   const [showMethodology, setShowMethodology] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [useLiveData, setUseLiveData] = useState(false); // Start with legacy data
   
   // Real data hooks
   const { 
@@ -194,12 +203,63 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-100 mb-2">No Cryptocurrencies Mentioned</h3>
-              <p className="text-gray-400 text-sm max-w-md mx-auto">
-                This video doesn't have any cryptocurrency mentions available for investment simulation.
+              <h3 className="text-lg font-semibold text-gray-100 mb-2">No Cryptocurrencies Available</h3>
+              <p className="text-gray-400 text-sm max-w-md mx-auto mb-4">
+                {coinsMentioned && coinsMentioned.length > 0 
+                  ? `Unable to fetch price data for the mentioned cryptocurrencies: ${coinsMentioned.join(', ')}`
+                  : 'This video doesn\'t have any cryptocurrency mentions tagged for investment simulation.'}
               </p>
+              
+              {/* Debug information in development */}
+              {import.meta.env.DEV && (
+                <div className="mt-6 p-4 bg-gray-900 rounded-lg text-left">
+                  <div className="text-xs font-mono text-gray-500">
+                    <div className="mb-2 text-gray-400 font-semibold">Debug Info:</div>
+                    <div>Video ID: {videoId}</div>
+                    <div>Publish Date: {publishDate}</div>
+                    <div>Coins Mentioned: {JSON.stringify(coinsMentioned)}</div>
+                    <div>Coins Data Length: {realCoinsData.length}</div>
+                    {coinsError && <div className="text-red-400 mt-2">Error: {coinsError}</div>}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If using live data, show the new simulator
+  if (useLiveData) {
+    return (
+      <div className="h-full overflow-y-auto p-8">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Data Source Toggle */}
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-100">Data Source</h3>
+                <p className="text-xs text-gray-400">Switch between legacy mock data and live Airtable data</p>
+              </div>
+              <button
+                onClick={() => setUseLiveData(false)}
+                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Using Live Data
+              </button>
+            </div>
+          </div>
+
+          <ErrorBoundary>
+            <LiveDataSimulator
+              coinMentions={coinsMentioned || []}
+              videoTitle={videoTitle}
+              publishDate={publishDate}
+              channelName="Crypto Influencer"
+            />
+          </ErrorBoundary>
         </div>
       </div>
     );
@@ -208,6 +268,22 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
   return (
     <div className="h-full overflow-y-auto p-8">
       <div className="max-w-7xl mx-auto space-y-8">
+        {/* Data Source Toggle */}
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-100">Data Source</h3>
+              <p className="text-xs text-gray-400">Switch between legacy mock data and live Airtable data</p>
+            </div>
+            <button
+              onClick={() => setUseLiveData(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              Using Legacy Data
+            </button>
+          </div>
+        </div>
         {/* Initial Investment Section */}
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-100 mb-4">Initial Investment</h3>
