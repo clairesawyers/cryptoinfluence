@@ -35,26 +35,45 @@ export const useCoinData = ({ videoDate, coinNames }: UseCoinDataProps): UseCoin
       setLoading(true);
       setError(null);
 
+      console.log('🚀 useCoinData: Starting to load coin data');
+      console.log('📅 Video Date:', videoDate);
+      console.log('🪙 Input coinNames:', coinNames);
+
       const airtableClient = new AirtableClient();
       const coinMarketCapClient = new CoinMarketCapClient();
       
       // Fetch metadata for all coins
       const coinMetadata = await airtableClient.fetchCoinMetadata();
+      console.log('📊 Available coin metadata count:', coinMetadata.length);
+      console.log('📊 Sample metadata:', coinMetadata.slice(0, 3).map(c => ({ name: c.name, ticker: c.ticker })));
       
-      // coinNames now contains symbols (e.g., ["BTC", "ETH"]) instead of names
+      // coinNames might contain full names OR symbols, so we need to check both
       const coinSymbols: string[] = [];
       const symbolToMetadata: Record<string, CoinMetadata> = {};
       
-      for (const coinSymbol of coinNames) {
-        const metadata = coinMetadata.find(coin => 
-          coin.ticker.toLowerCase() === coinSymbol.toLowerCase()
+      for (const coinInput of coinNames) {
+        // Try to find by ticker symbol first
+        let metadata = coinMetadata.find(coin => 
+          coin.ticker.toLowerCase() === coinInput.toLowerCase()
         );
+        
+        // If not found by ticker, try by name
+        if (!metadata) {
+          metadata = coinMetadata.find(coin => 
+            coin.name.toLowerCase() === coinInput.toLowerCase()
+          );
+          if (metadata) {
+            console.log(`✅ Found by name: ${coinInput} -> ${metadata.ticker}`);
+          }
+        } else {
+          console.log(`✅ Found by ticker: ${coinInput}`);
+        }
         
         if (metadata) {
           coinSymbols.push(metadata.ticker);
-          symbolToMetadata[coinSymbol.toUpperCase()] = metadata;
+          symbolToMetadata[coinInput.toUpperCase()] = metadata;
         } else {
-          console.warn(`Metadata not found for coin symbol: ${coinSymbol}`);
+          console.warn(`❌ Metadata not found for coin: ${coinInput}`);
         }
       }
       
@@ -66,13 +85,13 @@ export const useCoinData = ({ videoDate, coinNames }: UseCoinDataProps): UseCoin
       console.log('useCoinData: Received prices:', currentPrices);
       
       // Process each coin mentioned in the video
-      const coinDataPromises = coinNames.map(async (coinSymbol, index) => {
+      const coinDataPromises = coinNames.map(async (coinInput, index) => {
         try {
-          // Find metadata for this coin symbol
-          const metadata = symbolToMetadata[coinSymbol.toUpperCase()];
+          // Find metadata for this coin (could be name or symbol)
+          const metadata = symbolToMetadata[coinInput.toUpperCase()];
 
           if (!metadata) {
-            console.warn(`Metadata not found for coin symbol: ${coinSymbol}`);
+            console.warn(`Metadata not found for coin: ${coinInput}`);
             return null;
           }
 

@@ -265,6 +265,19 @@ export async function fetchContentItems(selectedDate?: Date, viewMode?: 'day' | 
         thumbnailUrl = (thumbnailField as any).url;
       }
       
+      // Process coins_mentioned field - it might be a string that needs parsing
+      let coinsMentioned: string[] | undefined;
+      const coinsMentionedField = record.fields['Coins Mentioned'];
+      
+      if (Array.isArray(coinsMentionedField)) {
+        coinsMentioned = coinsMentionedField;
+      } else if (typeof coinsMentionedField === 'string') {
+        // If it's a comma-separated string, split it
+        coinsMentioned = coinsMentionedField.split(',').map(coin => coin.trim()).filter(coin => coin.length > 0);
+      } else {
+        coinsMentioned = undefined;
+      }
+      
       const contentItem = {
         id: record.id,
         thumbnail_url: thumbnailUrl,
@@ -274,7 +287,7 @@ export async function fetchContentItems(selectedDate?: Date, viewMode?: 'day' | 
         views_count: record.fields['Views Count'] as number,
         publish_date: record.fields['Publish Date'] as string,
         short_summary: record.fields['Short Summary'] as string | undefined,
-        coins_mentioned: record.fields['Coins Mentioned'] as string[] | undefined,
+        coins_mentioned: coinsMentioned,
         publish_status: record.fields['Publish Status'] as string | undefined,
       };
       
@@ -284,7 +297,21 @@ export async function fetchContentItems(selectedDate?: Date, viewMode?: 'day' | 
       console.log('🔍 Raw Thumbnail field:', thumbnailField);
       console.log('✅ Publish Status:', contentItem.publish_status);
       console.log('🪙 Raw Coins Mentioned field:', record.fields['Coins Mentioned']);
+      console.log('🪙 Processed coins_mentioned:', contentItem.coins_mentioned);
       console.log('🏷️ Available fields:', Object.keys(record.fields));
+      
+      // Extra logging for investment data debugging
+      console.log('💰 Investment Data Debug for', contentItem.title);
+      console.log('  - Raw Coins Mentioned field:', record.fields['Coins Mentioned']);
+      console.log('  - Type:', typeof coinsMentionedField);
+      console.log('  - Is Array?:', Array.isArray(coinsMentionedField));
+      console.log('  - Processed coins_mentioned:', coinsMentioned);
+      if (coinsMentioned && coinsMentioned.length > 0) {
+        console.log('  - First coin:', coinsMentioned[0]);
+        console.log('  - All coins:', coinsMentioned.join(', '));
+      } else {
+        console.log('  - No coins mentioned or empty array');
+      }
       
       return contentItem;
     });
