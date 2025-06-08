@@ -265,60 +265,55 @@ export async function fetchContentItems(selectedDate?: Date, viewMode?: 'day' | 
         thumbnailUrl = (thumbnailField as any).url;
       }
       
-      // Process coins_mentioned field - it's a Rollup field with JSON-encoded string
+      // 🔧 FIXED: Handle array-based Coins Mentioned field
       let coinsMentioned: string[] | undefined;
       const coinsMentionedField = record.fields['Coins Mentioned'];
-      
+
       console.log('🔍 Raw Coins Mentioned field:', coinsMentionedField);
       console.log('🔍 Field type:', typeof coinsMentionedField);
-      
-      if (typeof coinsMentionedField === 'string') {
-        try {
-          // Handle Rollup field format: "\"BTC,SOL,AVAX,ADA,ETH\""
-          let cleanedString = coinsMentionedField;
+
+      if (Array.isArray(coinsMentionedField)) {
+        // ✅ Handle array format (which is what you actually get)
+        coinsMentioned = coinsMentionedField
+          .filter(coin => {
+            // Filter out null, undefined, empty strings, and error messages
+            return coin != null && 
+                   coin !== '' && 
+                   typeof coin === 'string' &&
+                   !coin.includes('Not found') &&
+                   !coin.includes('(400)') &&
+                   coin.trim().length > 0;
+          })
+          .map(coin => coin.trim().toUpperCase())
+          .filter((coin, index, arr) => arr.indexOf(coin) === index); // Remove duplicates
           
-          // Remove outer quotes if present
+        console.log('🪙 Parsed coins from array:', coinsMentioned);
+      } else if (typeof coinsMentionedField === 'string') {
+        // 🔄 Keep string parsing as fallback
+        try {
+          let cleanedString = coinsMentionedField;
           if (cleanedString.startsWith('"') && cleanedString.endsWith('"')) {
             cleanedString = cleanedString.slice(1, -1);
           }
-          
-          // Remove escaped quotes
           cleanedString = cleanedString.replace(/\\"/g, '');
           
-          console.log('🔄 Cleaned string:', cleanedString);
-          
-          // Split by comma and clean up
           if (cleanedString && cleanedString.length > 0) {
             coinsMentioned = cleanedString
               .split(',')
-              .map(coin => coin.trim())
-              .filter(coin => coin.length > 0 && coin !== 'Not found (400)') // Filter out error messages
-              .filter(coin => !coin.includes('Not found')) // Filter out any "Not found" entries
-              .map(coin => coin.toUpperCase()); // Ensure consistent case
+              .map(coin => coin.trim().toUpperCase())
+              .filter(coin => coin.length > 0 && !coin.includes('Not found'));
           }
-          
-          console.log('🪙 Parsed coins:', coinsMentioned);
+          console.log('🪙 Parsed coins from string:', coinsMentioned);
         } catch (error) {
           console.error('❌ Error parsing coins mentioned field:', error);
-          
-          // Fallback: try simple comma split
-          coinsMentioned = coinsMentionedField
-            .split(',')
-            .map(coin => coin.trim())
-            .filter(coin => coin.length > 0);
+          coinsMentioned = undefined;
         }
-      } else if (Array.isArray(coinsMentionedField)) {
-        // Handle if it's already an array (shouldn't happen with Rollup but just in case)
-        coinsMentioned = coinsMentionedField
-          .filter(coin => coin != null && coin !== undefined && coin !== '')
-          .map(coin => String(coin).trim().toUpperCase())
-          .filter(coin => coin.length > 0);
       } else {
         console.log('⚠️ Coins Mentioned field is null/undefined');
         coinsMentioned = undefined;
       }
-      
-      // If we ended up with an empty array, set to undefined
+
+      // Set to undefined if empty
       if (coinsMentioned && coinsMentioned.length === 0) {
         coinsMentioned = undefined;
       }

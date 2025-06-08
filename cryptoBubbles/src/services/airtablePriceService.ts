@@ -77,7 +77,7 @@ export class AirtablePriceService {
         {
           headers: this.headers,
           params: {
-            filterByFormula: `AND({Symbol} = '${symbol}', {Date} = '${formattedDate}')`,
+            filterByFormula: `AND({Symbol} = '${symbol}', DATETIME_PARSE({Date}, "YYYY-MM-DD") = DATETIME_PARSE("${formattedDate}", "YYYY-MM-DD"))`,
             maxRecords: 1,
             sort: [{ field: 'Date', direction: 'desc' }]
           }
@@ -281,5 +281,84 @@ export class AirtablePriceService {
     }
     
     return dates;
+  }
+
+  /**
+   * Validate and map symbols to ensure they exist in price history
+   */
+  async validateSymbols(symbols: string[]): Promise<{
+    valid: string[];
+    invalid: string[];
+    mappings: Record<string, string>;
+  }> {
+    try {
+      console.log('🔍 Validating symbols:', symbols);
+      
+      // Get all available symbols from price history
+      const availableSymbols = await this.getAvailableSymbols();
+      console.log('📊 Available symbols in price history:', availableSymbols.slice(0, 10), '...'); // Show first 10
+      
+      const valid: string[] = [];
+      const invalid: string[] = [];
+      const mappings: Record<string, string> = {};
+      
+      for (const symbol of symbols) {
+        const upperSymbol = symbol.toUpperCase();
+        
+        // Check exact match first
+        if (availableSymbols.includes(upperSymbol)) {
+          valid.push(upperSymbol);
+          mappings[symbol] = upperSymbol;
+          console.log(`✅ Symbol ${symbol} -> ${upperSymbol} (exact match)`);
+        } else {
+          // Try common mappings
+          const symbolMappings: Record<string, string> = {
+            'RNDR': 'RENDER',  // Common mapping
+            'RENDER': 'RNDR',  // Reverse mapping
+            // Add more mappings as needed
+          };
+          
+          const mappedSymbol = symbolMappings[upperSymbol];
+          if (mappedSymbol && availableSymbols.includes(mappedSymbol)) {
+            valid.push(mappedSymbol);
+            mappings[symbol] = mappedSymbol;
+            console.log(`✅ Symbol ${symbol} -> ${mappedSymbol} (mapped)`);
+          } else {
+            invalid.push(symbol);
+            console.log(`❌ Symbol ${symbol} not found in price history`);
+          }
+        }
+      }
+      
+      return { valid, invalid, mappings };
+    } catch (error) {
+      console.error('❌ Error validating symbols:', error);
+      return { valid: [], invalid: symbols, mappings: {} };
+    }
+  }
+
+  /**
+   * Enhanced getPriceOnDate with better error handling
+   */
+  async getPriceOnDateSafe(symbol: string, date: string): Promise<{
+    price: number | null;
+    error?: string;
+  }> {
+    try {
+      const price = await this.getPriceOnDate(symbol, date);
+      if (price === null) {
+        return {
+          price: null,
+          error: `No price data found for ${symbol} on ${date}`
+        };
+      }
+      return { price };
+    } catch (error) {
+      console.error(`❌ Error getting price for ${symbol}:`, error);
+      return {
+        price: null,
+        error: `API error for ${symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
   }
 }

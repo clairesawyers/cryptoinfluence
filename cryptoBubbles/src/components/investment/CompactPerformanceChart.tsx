@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, Settings } from 'lucide-react';
 import { InvestmentDataPoint } from './CryptoVideoSimulator';
-import { formatCurrencyFull } from '../../utils/formatting';
+import { formatCurrencyFull, formatPercentage } from '../../utils/formatting';
 
 interface CompactPerformanceChartProps {
   investmentData: InvestmentDataPoint[];
@@ -19,6 +19,17 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
     y: number;
     data: InvestmentDataPoint;
   } | null>(null);
+  const [displayMode, setDisplayMode] = useState<'value' | 'percentage'>('value');
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Close settings menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setShowSettings(false);
+    if (showSettings) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showSettings]);
 
   // Show empty state if no investment data
   if (investmentData.length === 0) {
@@ -60,10 +71,16 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
     const chartWidth = rect.width - padding.left - padding.right;
     const chartHeight = rect.height - padding.top - padding.bottom;
 
-    // Find min and max values for scaling
-    const values = investmentData.map(d => d.value);
-    const minValue = 0; // Always start at $0
-    const maxValue = Math.max(...values, investmentAmount) * 1.05;
+    // Calculate values based on display mode
+    const values = displayMode === 'value' 
+      ? investmentData.map(d => d.value)
+      : investmentData.map(d => ((d.value - investmentAmount) / investmentAmount) * 100);
+    
+    const baselineValue = displayMode === 'value' ? investmentAmount : 0;
+    const minValue = displayMode === 'value' ? 0 : Math.min(...values, 0) * 1.1;
+    const maxValue = displayMode === 'value' 
+      ? Math.max(...values, investmentAmount) * 1.05
+      : Math.max(...values, 0) * 1.1;
     const valueRange = maxValue - minValue;
 
     // Draw grid lines
@@ -92,8 +109,8 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
 
     ctx.setLineDash([]);
 
-    // Draw investment baseline
-    const baselineY = padding.top + chartHeight - ((investmentAmount - minValue) / valueRange) * chartHeight;
+    // Draw baseline (investment amount for value mode, 0% for percentage mode)
+    const baselineY = padding.top + chartHeight - ((baselineValue - minValue) / valueRange) * chartHeight;
     ctx.strokeStyle = '#6b7280';
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
@@ -123,7 +140,10 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
     
     investmentData.forEach((point, index) => {
       const x = padding.left + xStep * index;
-      const y = padding.top + chartHeight - ((point.value - minValue) / valueRange) * chartHeight;
+      const plotValue = displayMode === 'value' 
+        ? point.value 
+        : ((point.value - investmentAmount) / investmentAmount) * 100;
+      const y = padding.top + chartHeight - ((plotValue - minValue) / valueRange) * chartHeight;
       ctx.lineTo(x, y);
     });
     
@@ -138,7 +158,10 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
 
     investmentData.forEach((point, index) => {
       const x = padding.left + xStep * index;
-      const y = padding.top + chartHeight - ((point.value - minValue) / valueRange) * chartHeight;
+      const plotValue = displayMode === 'value' 
+        ? point.value 
+        : ((point.value - investmentAmount) / investmentAmount) * 100;
+      const y = padding.top + chartHeight - ((plotValue - minValue) / valueRange) * chartHeight;
 
       if (index === 0) {
         ctx.moveTo(x, y);
@@ -152,7 +175,10 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
     // Draw data points
     investmentData.forEach((point, index) => {
       const x = padding.left + xStep * index;
-      const y = padding.top + chartHeight - ((point.value - minValue) / valueRange) * chartHeight;
+      const plotValue = displayMode === 'value' 
+        ? point.value 
+        : ((point.value - investmentAmount) / investmentAmount) * 100;
+      const y = padding.top + chartHeight - ((plotValue - minValue) / valueRange) * chartHeight;
 
       // Outer circle
       ctx.fillStyle = '#1f2937';
@@ -183,16 +209,20 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
     for (let i = 0; i <= 4; i++) {
       const value = minValue + (valueRange / 4) * (4 - i);
       const y = padding.top + (chartHeight / 4) * i;
-      ctx.fillText(formatCurrencyFull(value), padding.left - 10, y + 4);
+      const label = displayMode === 'value' 
+        ? formatCurrencyFull(value)
+        : formatPercentage(value);
+      ctx.fillText(label, padding.left - 10, y + 4);
     }
 
     // Draw baseline label
     ctx.textAlign = 'left';
     ctx.fillStyle = '#6b7280';
     ctx.font = '10px Inter';
-    ctx.fillText('Initial Investment', padding.left + chartWidth + 5, baselineY + 4);
+    const baselineLabel = displayMode === 'value' ? 'Initial Investment' : '0% Return';
+    ctx.fillText(baselineLabel, padding.left + chartWidth + 5, baselineY + 4);
 
-  }, [investmentData, investmentAmount]);
+  }, [investmentData, investmentAmount, displayMode]);
 
   const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -200,7 +230,6 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
 
     const rect = canvas.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
 
     const padding = { top: 20, right: 60, bottom: 40, left: 60 };
     const chartWidth = rect.width - padding.left - padding.right;
@@ -239,7 +268,6 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
 
   const currentValue = investmentData[investmentData.length - 1]?.value || investmentAmount;
   const totalReturn = currentValue - investmentAmount;
-  const returnPercentage = ((totalReturn / investmentAmount) * 100);
 
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
@@ -248,14 +276,64 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
           <BarChart3 size={18} className="text-primary-400" />
           Investment Performance Over Time
         </h3>
-        <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-0.5 bg-gray-500"></div>
-            <span className="text-gray-400">Initial Investment</span>
+        <div className="flex items-center gap-4">
+          {/* Legend */}
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-0.5 bg-gray-500"></div>
+              <span className="text-gray-400">{displayMode === 'value' ? 'Initial Investment' : '0% Return'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-0.5 ${totalReturn >= 0 ? 'bg-success-400' : 'bg-loss-400'}`}></div>
+              <span className="text-gray-400">{displayMode === 'value' ? 'Portfolio Value' : 'Return %'}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className={`w-3 h-0.5 ${totalReturn >= 0 ? 'bg-success-400' : 'bg-loss-400'}`}></div>
-            <span className="text-gray-400">Portfolio Value</span>
+          
+          {/* Settings Menu */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowSettings(!showSettings);
+              }}
+              className="p-2 rounded-lg hover:bg-gray-700 transition-colors"
+              title="Chart Settings"
+            >
+              <Settings size={16} className="text-gray-400" />
+            </button>
+            
+            {showSettings && (
+              <div 
+                className="absolute right-0 top-full mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-10 min-w-[160px]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-2">
+                  <div className="text-xs text-gray-400 mb-2 px-2">Display Mode</div>
+                  <button
+                    onClick={() => {
+                      setDisplayMode('value');
+                      setShowSettings(false);
+                    }}
+                    className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
+                      displayMode === 'value' ? 'bg-primary-600 text-white' : 'text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    Value ($)
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDisplayMode('percentage');
+                      setShowSettings(false);
+                    }}
+                    className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
+                      displayMode === 'percentage' ? 'bg-primary-600 text-white' : 'text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    Percentage (%)
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -282,31 +360,45 @@ export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = (
             <div className="text-sm font-medium text-gray-200 mb-2">{tooltip.data.date}</div>
             <div className="space-y-1">
               <div className="flex items-center justify-between gap-4">
-                <span className="text-xs text-gray-400">Portfolio Value:</span>
+                <span className="text-xs text-gray-400">{displayMode === 'value' ? 'Portfolio Value:' : 'Return:'}</span>
                 <span className="text-sm font-medium text-gray-200">
-                  {formatCurrencyFull(tooltip.data.value)}
+                  {displayMode === 'value' 
+                    ? formatCurrencyFull(tooltip.data.value)
+                    : formatPercentage(((tooltip.data.value - investmentAmount) / investmentAmount) * 100)
+                  }
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-xs text-gray-400">Return:</span>
-                <div className={`flex items-center gap-1 ${
-                  tooltip.data.value >= investmentAmount ? 'text-success-400' : 'text-loss-400'
-                }`}>
-                  {tooltip.data.value >= investmentAmount ? (
-                    <TrendingUp size={12} />
-                  ) : (
-                    <TrendingDown size={12} />
-                  )}
-                  <span className="text-sm font-medium">
-                    {tooltip.data.value >= investmentAmount ? '+' : ''}
-                    {formatCurrencyFull(tooltip.data.value - investmentAmount)} 
-                    ({((tooltip.data.value - investmentAmount) / investmentAmount * 100).toFixed(2)}%)
-                  </span>
+              {displayMode === 'value' && (
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-xs text-gray-400">Return:</span>
+                  <div className={`flex items-center gap-1 ${
+                    tooltip.data.value >= investmentAmount ? 'text-success-400' : 'text-loss-400'
+                  }`}>
+                    {tooltip.data.value >= investmentAmount ? (
+                      <TrendingUp size={12} />
+                    ) : (
+                      <TrendingDown size={12} />
+                    )}
+                    <span className="text-sm font-medium">
+                      {tooltip.data.value >= investmentAmount ? '+' : ''}
+                      {formatCurrencyFull(tooltip.data.value - investmentAmount)} 
+                      ({((tooltip.data.value - investmentAmount) / investmentAmount * 100).toFixed(2)}%)
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
+      </div>
+      
+      {/* CMC Data Timestamp Disclaimer */}
+      <div className="mt-3 text-xs text-gray-500 text-center">
+        *As at day close {(() => {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          return yesterday.toLocaleDateString('en-GB').replace(/\//g, '-');
+        })()}
       </div>
     </div>
   );

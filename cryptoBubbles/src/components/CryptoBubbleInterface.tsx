@@ -12,10 +12,10 @@ export const CryptoBubbleInterface: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 1200, height: 600 });
   const [expandedSummary, setExpandedSummary] = useState(false);
-  const [showInvestmentPanel, setShowInvestmentPanel] = useState(false);
   const [isProfitable, setIsProfitable] = useState(true);
   const [showDebugTool, setShowDebugTool] = useState(false);
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(true);
+  const [showInvestmentSimulator, setShowInvestmentSimulator] = useState(false);
   
   const {
     bubbles,
@@ -47,7 +47,7 @@ export const CryptoBubbleInterface: React.FC = () => {
     const updateCanvasSize = () => {
       if (containerRef.current) {
         // Account for the side panel only when it's open
-        const panelWidth = isDetailsPanelOpen ? 320 : 0;
+        const panelWidth = isDetailsPanelOpen ? 320 : 0; // w-80 = 320px
         const availableWidth = window.innerWidth - panelWidth - 40; // panel + 40px total padding
         const newWidth = Math.max(600, availableWidth);
         const newHeight = Math.max(400, window.innerHeight - 200); // Account for header/controls
@@ -90,11 +90,14 @@ export const CryptoBubbleInterface: React.FC = () => {
       />
       
       <div className="flex-1 flex relative">
-        {/* Side Panel - Slideable */}
-        <div className={`${isDetailsPanelOpen ? 'w-80' : 'w-0'} bg-gray-850 border-r-2 border-gray-700 shadow-panel-raised transition-all duration-300 relative overflow-hidden`}>
-          <div className="w-80 p-6">
+        {/* Side Panel - Full Height Combined Video Details & Investment Simulator */}
+        <div 
+          className={`${isDetailsPanelOpen ? 'w-80' : 'w-0'} bg-gray-850 border-r-2 border-gray-700 shadow-panel-raised transition-all duration-300 relative overflow-hidden`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-80 h-full flex flex-col">
           {selectedCard ? (
-            <div className="bg-gray-900 border-2 border-primary-600 rounded-xl p-6 shadow-card-intense relative">
+            <div className="bg-gray-900 border-2 border-primary-600 rounded-xl m-6 shadow-card-intense relative flex-1 flex flex-col overflow-hidden">
               {/* Thumbnail Preview */}
               {selectedCard.thumbnail_url && (
                 <div className="mb-6">
@@ -168,6 +171,29 @@ export const CryptoBubbleInterface: React.FC = () => {
                     )}
                   </div>
                 )}
+
+                {/* Coins Mentioned */}
+                {selectedCard.coins_mentioned && selectedCard.coins_mentioned.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.51-1.31c-.562-.649-1.413-1.076-2.353-1.253V5z" clipRule="evenodd"/>
+                      </svg>
+                      <span className="text-gray-400 text-xs uppercase tracking-wide">Coins Mentioned</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedCard.coins_mentioned.map((coin, index) => (
+                        <span 
+                          key={index}
+                          className="inline-flex items-center px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-medium text-gray-200 hover:bg-gray-700 transition-colors"
+                        >
+                          {coin}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-600 to-transparent mt-4"></div>
               </div>
@@ -209,10 +235,10 @@ export const CryptoBubbleInterface: React.FC = () => {
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="space-y-3">
+              {/* Action Button */}
+              <div className="mt-6">
                 <button 
-                  onClick={() => setShowInvestmentPanel(true)}
+                  onClick={() => setShowInvestmentSimulator(true)}
                   className="w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 shadow-panel-raised hover:shadow-panel-floating transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2"
                 >
                   <TrendingUp size={16} />
@@ -222,8 +248,11 @@ export const CryptoBubbleInterface: React.FC = () => {
 
               {/* Close Button */}
               <button 
-                onClick={() => actions.selectCard(null)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-200 transition-colors duration-200"
+                onClick={() => {
+                  setShowInvestmentSimulator(false);
+                  actions.selectCard(null);
+                }}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-200 transition-colors duration-200 z-10"
                 title="Close details"
               >
                 ✕
@@ -235,7 +264,7 @@ export const CryptoBubbleInterface: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-gray-900 border-2 border-gray-600 rounded-xl p-6 shadow-panel-raised h-full flex items-center justify-center">
+            <div className="bg-gray-900 border-2 border-gray-600 rounded-xl m-6 p-6 shadow-panel-raised flex-1 flex items-center justify-center">
               <div className="text-center">
                 <div className="w-16 h-16 bg-gray-800 border-2 border-gray-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-panel-raised">
                   <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -265,7 +294,11 @@ export const CryptoBubbleInterface: React.FC = () => {
 
         
         {/* Main Canvas Area */}
-        <div ref={containerRef} className={`transition-all duration-300 p-5 ${selectedCard ? 'flex-1' : 'flex-1'}`}>
+        <div 
+          ref={containerRef} 
+          className={`transition-all duration-300 p-5 ${selectedCard ? 'flex-1' : 'flex-1'} ${showInvestmentSimulator ? 'hidden' : ''}`}
+          onClick={() => selectedCard && actions.selectCard(null)}
+        >
           {loading ? (
             <div className="w-full h-full min-h-[400px] bg-gray-900 border-2 border-gray-700 rounded-xl flex items-center justify-center shadow-panel-raised">
               <div className="text-center">
@@ -321,59 +354,37 @@ export const CryptoBubbleInterface: React.FC = () => {
             </div>
           )}
         </div>
-        
-        {/* Investment Simulation Modal - Covers canvas area only */}
-        {showInvestmentPanel && (
-          <div 
-            className="fixed bg-gray-900 border-4 border-gray-500 rounded-xl z-50 shadow-2xl"
-            style={{ 
-              top: '100px', // Reduced top margin
-              left: isDetailsPanelOpen ? '320px' : '10px', // Reduced margins
-              right: '10px', // Reduced margin
-              bottom: '50px', // Reduced bottom margin
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1)'
-            }}
-          >
-          {/* Inner glow overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-primary-500/5 via-transparent to-transparent pointer-events-none" />
-          
-            <div className="h-full flex flex-col relative">
+
+        {/* Investment Simulator Extension - Takes over canvas area */}
+        {showInvestmentSimulator && selectedCard && (
+          <div className="flex-1 p-5">
+            <div className="bg-gray-900 border-2 border-gray-700 rounded-xl h-full flex flex-col overflow-hidden shadow-panel-floating">
               {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b-2 border-gray-700 bg-gray-900/95 backdrop-blur-sm rounded-t-lg">
+              <div className="flex items-center justify-between p-4 border-b-2 border-gray-700 bg-gray-900/95 backdrop-blur-sm">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-100">Investment Simulator</h2>
                   <p className="text-sm text-gray-400 mt-0.5">
-                    How would a $1,000 investment made at the time of this video have played out? Explore below.
+                    How would a $1,000 investment made at the time of this video have played out?
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setShowInvestmentPanel(false)}
-                    className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
-                  >
-                    <X size={20} className="text-gray-400" />
-                  </button>
-                </div>
+                <button
+                  onClick={() => setShowInvestmentSimulator(false)}
+                  className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+                  title="Close Investment Simulator"
+                >
+                  <X size={20} className="text-gray-400" />
+                </button>
               </div>
               
-              {/* Content Area */}
+              {/* Content */}
               <div className="flex-1 overflow-hidden">
-                {selectedCard && (() => {
-                  // Debug log to see what coins_mentioned data we have
-                  console.log('🎯 Selected card coins_mentioned:', selectedCard.coins_mentioned);
-                  console.log('📺 Selected card title:', selectedCard.title);
-                  console.log('🔍 Full selected card data:', selectedCard);
-                  
-                  return (
-                    <CryptoVideoSimulator
-                      videoId={selectedCard.id}
-                      videoTitle={selectedCard.title}
-                      publishDate={selectedCard.published_at}
-                      coinsMentioned={selectedCard.coins_mentioned || ['Bitcoin', 'Ethereum', 'Solana']}
-                      onProfitabilityChange={setIsProfitable}
-                    />
-                  );
-                })()}
+                <CryptoVideoSimulator
+                  videoId={selectedCard.id}
+                  videoTitle={selectedCard.title}
+                  publishDate={selectedCard.published_at}
+                  coinsMentioned={selectedCard.coins_mentioned || ['Bitcoin', 'Ethereum', 'Solana']}
+                  onProfitabilityChange={setIsProfitable}
+                />
               </div>
             </div>
           </div>
