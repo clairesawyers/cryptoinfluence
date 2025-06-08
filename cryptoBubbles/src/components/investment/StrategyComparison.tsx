@@ -226,6 +226,15 @@ export const StrategyComparison: React.FC<StrategyComparisonProps> = ({
           </p>
         </div>
       </div>
+      
+      {/* CMC Data Timestamp Disclaimer */}
+      <div className="mt-3 text-xs text-gray-500 text-center">
+        *As at day close {(() => {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          return yesterday.toLocaleDateString('en-GB').replace(/\//g, '-');
+        })()}
+      </div>
     </div>
   );
 };

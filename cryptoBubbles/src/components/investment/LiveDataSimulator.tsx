@@ -276,9 +276,15 @@ export const LiveDataSimulator: React.FC<LiveDataSimulatorProps> = ({
               <div className="space-y-2">
                 {simulation.positions.map((position, index) => (
                   <div key={index} className="flex justify-between items-center bg-gray-800 p-3 rounded">
-                    <div>
+                    <div className="flex-1">
                       <div className="font-medium text-gray-200">{position.name}</div>
                       <div className="text-xs text-gray-400">{position.symbol}</div>
+                    </div>
+                    <div className="text-center px-4">
+                      <div className="font-medium text-gray-200">
+                        {formatCurrencyFull((position.allocation / 100) * simulation.investmentAmount)}
+                      </div>
+                      <div className="text-xs text-gray-400">Initial Investment</div>
                     </div>
                     <div className="text-right">
                       <div className="font-medium text-gray-200">
@@ -293,6 +299,22 @@ export const LiveDataSimulator: React.FC<LiveDataSimulatorProps> = ({
                     </div>
                   </div>
                 ))}
+              </div>
+              {/* Date range information */}
+              <div className="mt-3 text-xs text-gray-500 text-center">
+                Hypothetical investment made {simulation.investmentDate} and remains open as of today, {new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}
+              </div>
+              {/* Price data disclaimer */}
+              <div className="mt-1 text-xs text-gray-500 text-center">
+                *As at day close {(() => {
+                  const yesterday = new Date();
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  return yesterday.toLocaleDateString('en-GB').replace(/\//g, '-');
+                })()}
+              </div>
+              {/* CMC Data Timestamp Disclaimer */}
+              <div className="mt-2 text-xs text-gray-500 text-center">
+                Current prices from CoinMarketCap API • Data may be delayed up to 5 minutes
               </div>
             </div>
           </div>

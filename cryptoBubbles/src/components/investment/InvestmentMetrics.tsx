@@ -79,6 +79,17 @@ export const InvestmentMetrics: React.FC<InvestmentMetricsProps> = ({
           </p>
         </div>
       </div>
+      
+      {/* CMC Data Timestamp Disclaimer */}
+      {investmentData.length > 0 && (
+        <div className="mt-3 text-xs text-gray-500 text-center">
+          *As at day close {(() => {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            return yesterday.toLocaleDateString('en-GB').replace(/\//g, '-');
+          })()}
+        </div>
+      )}
     </div>
   );
 };

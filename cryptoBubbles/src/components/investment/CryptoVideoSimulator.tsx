@@ -8,6 +8,8 @@ import { ErrorBoundary } from '../ErrorBoundary';
 import { formatCurrencyFull, formatPercentage } from '../../utils/formatting';
 import { useCoinData } from '../../hooks/useCoinData';
 import { useInvestmentData } from '../../hooks/useInvestmentData';
+import { AirtablePriceService } from '../../services/airtablePriceService';
+import { ContentItem } from '../../types/index';
 
 interface CryptoVideoSimulatorProps {
   videoId: string;
@@ -43,6 +45,111 @@ export interface InvestmentDataPoint {
   value: number;
   change: number;
 }
+
+// Helper function to get coin metadata (placeholder implementation)
+const getCoinMetadata = async (symbol: string): Promise<{
+  name: string;
+  category: string;
+  logoUrl: string;
+} | null> => {
+  // TODO: Implement real metadata fetching from Instruments service or other source
+  const commonCoins: Record<string, { name: string; category: string; logoUrl: string }> = {
+    'BTC': { name: 'Bitcoin', category: 'Cryptocurrency', logoUrl: '' },
+    'ETH': { name: 'Ethereum', category: 'Smart Contract Platform', logoUrl: '' },
+    'SOL': { name: 'Solana', category: 'Smart Contract Platform', logoUrl: '' },
+    'ADA': { name: 'Cardano', category: 'Smart Contract Platform', logoUrl: '' },
+    'AVAX': { name: 'Avalanche', category: 'Smart Contract Platform', logoUrl: '' },
+    'DOT': { name: 'Polkadot', category: 'Interoperability', logoUrl: '' },
+    'LINK': { name: 'Chainlink', category: 'Oracle', logoUrl: '' },
+    'MATIC': { name: 'Polygon', category: 'Layer 2', logoUrl: '' },
+    'UNI': { name: 'Uniswap', category: 'DeFi', logoUrl: '' },
+    'RENDER': { name: 'Render', category: 'Computing', logoUrl: '' },
+    'RNDR': { name: 'Render', category: 'Computing', logoUrl: '' },
+  };
+  
+  return commonCoins[symbol.toUpperCase()] || {
+    name: symbol,
+    category: 'Cryptocurrency',
+    logoUrl: ''
+  };
+};
+
+// 🔧 Enhanced coin data processing with validation
+const processCoinsFromContentItem = async (contentItem: ContentItem): Promise<CoinData[]> => {
+  if (!contentItem.coins_mentioned || contentItem.coins_mentioned.length === 0) {
+    console.log('❌ No coins mentioned in content item:', contentItem.title);
+    return [];
+  }
+
+  console.log('🔍 Processing coins for:', contentItem.title);
+  console.log('🪙 Raw coins mentioned:', contentItem.coins_mentioned);
+
+  // Validate symbols first
+  const priceService = new AirtablePriceService();
+  const validation = await priceService.validateSymbols(contentItem.coins_mentioned);
+  
+  console.log('✅ Valid symbols:', validation.valid);
+  console.log('❌ Invalid symbols:', validation.invalid);
+  console.log('🔄 Symbol mappings:', validation.mappings);
+
+  if (validation.invalid.length > 0) {
+    console.warn(`⚠️ Some symbols not found in price history: ${validation.invalid.join(', ')}`);
+  }
+
+  // Process only valid symbols
+  const coinDataPromises = validation.valid.map(async (symbol): Promise<CoinData | null> => {
+    try {
+      // Get price data for the publish date
+      const publishDate = contentItem.publish_date;
+      const priceResult = await priceService.getPriceOnDateSafe(symbol, publishDate);
+      
+      if (!priceResult.price) {
+        console.warn(`⚠️ No price data for ${symbol} on ${publishDate}: ${priceResult.error}`);
+        return null;
+      }
+
+      // Get current price for comparison
+      const currentPriceResult = await priceService.getPriceOnDateSafe(symbol, new Date().toISOString().split('T')[0]);
+      const currentPrice = currentPriceResult.price || priceResult.price; // Fallback to historical price
+
+      // Calculate price change
+      const priceChange = currentPrice && priceResult.price 
+        ? ((currentPrice - priceResult.price) / priceResult.price) * 100 
+        : 0;
+
+      // Get metadata
+      const metadata = await getCoinMetadata(symbol);
+
+      // Calculate return amount (will be updated based on allocation)
+      const returnAmount = currentPrice && priceResult.price 
+        ? currentPrice - priceResult.price 
+        : 0;
+
+      return {
+        symbol,
+        name: metadata?.name || symbol,
+        category: metadata?.category || 'Cryptocurrency',
+        logoUrl: metadata?.logoUrl || '',
+        currentPrice,
+        initialPrice: priceResult.price,
+        priceChange,
+        returnAmount,
+        isSelected: false,
+        allocation: 0
+      };
+    } catch (error) {
+      console.error(`❌ Error processing ${symbol}:`, error);
+      return null;
+    }
+  });
+
+  const coinDataResults = await Promise.all(coinDataPromises);
+  const validCoinData = coinDataResults.filter((coin): coin is CoinData => coin !== null);
+  
+  console.log(`✅ Successfully processed ${validCoinData.length}/${validation.valid.length} coins`);
+  
+  return validCoinData;
+};
 
 const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
   videoId,
@@ -268,40 +375,44 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
   return (
     <div className="h-full overflow-y-auto p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Data Source Toggle */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-100">Data Source</h3>
-              <p className="text-xs text-gray-400">Switch between legacy mock data and live Airtable data</p>
-            </div>
-            <button
-              onClick={() => setUseLiveData(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-              Using Legacy Data
-            </button>
-          </div>
-        </div>
-        {/* Initial Investment Section */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-100 mb-4">Initial Investment</h3>
-          
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-300 min-w-[120px]">Initial Investment</label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-400">$</span>
-                <div className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm font-medium text-gray-300">
-                  1,000
+        {/* Initial Investment & Data Source Section */}
+        <div className="flex gap-4">
+          {/* Initial Investment Section - 2/3 width */}
+          <div className="flex-1 bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">Initial Investment</h3>
+            
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-gray-300 min-w-[120px]">Initial Investment</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-400">$</span>
+                  <div className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm font-medium text-gray-300">
+                    1,000
+                  </div>
+                  <span className="text-xs text-gray-500">(uneditable)</span>
                 </div>
-                <span className="text-xs text-gray-500">(uneditable)</span>
+              </div>
+              
+              <div className="text-sm text-gray-400">
+                Distribute amongst top mentioned cryptocurrencies.
               </div>
             </div>
-            
-            <div className="text-sm text-gray-400">
-              Distribute amongst top mentioned cryptocurrencies.
+          </div>
+
+          {/* Data Source Toggle - 1/3 width */}
+          <div className="w-1/3 bg-gray-800 border border-gray-700 rounded-lg p-4">
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-100">Data Source</h3>
+                <p className="text-xs text-gray-400">Switch between legacy mock data and live Airtable data</p>
+              </div>
+              <button
+                onClick={() => setUseLiveData(true)}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors text-sm"
+              >
+                <Settings className="w-4 h-4" />
+                Using Legacy Data
+              </button>
             </div>
           </div>
         </div>
