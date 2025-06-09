@@ -1,6 +1,6 @@
 import axios, { AxiosResponse } from 'axios';
-import { PriceHistory, PriceDataPoint, PriceRange } from '../types/priceHistory';
-import { AirtableResponse, AirtableRecord, PriceHistoryFields, AirtableError } from '../types/api';
+import { PriceDataPoint, PriceRange } from '../types/priceHistory';
+import { AirtableResponse, AirtableRecord, PriceHistoryFields } from '../types/api';
 
 export class AirtablePriceService {
   private readonly baseId: string;
@@ -46,17 +46,6 @@ export class AirtablePriceService {
     };
   }
 
-  private mapRecordToPriceHistory(record: AirtableRecord<PriceHistoryFields>): PriceHistory {
-    return {
-      id: record.id,
-      symbol: record.fields.Symbol,
-      price: record.fields.Price,
-      recordedAt: record.fields['Recorded At'],
-      source: record.fields.Source,
-      volume: record.fields.Volume,
-      marketCap: record.fields['Market Cap']
-    };
-  }
 
   private formatDateForAirtable(date: string | Date): string {
     const d = typeof date === 'string' ? new Date(date) : date;

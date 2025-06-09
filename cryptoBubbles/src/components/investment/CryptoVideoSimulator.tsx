@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Clock, BarChart3, AlertTriangle, ChevronDown, Settings } from 'lucide-react';
+import { BarChart3, ChevronDown, Settings } from 'lucide-react';
 import { CompactCoinSelector } from './CompactCoinSelector';
 import { CompactPerformanceChart } from './CompactPerformanceChart';
-import { StrategyComparison } from './StrategyComparison';
+import { StrategyComparison } from './DynamicStrategyComparison';
 import { LiveDataSimulator } from './LiveDataSimulator';
 import { ErrorBoundary } from '../ErrorBoundary';
-import { formatCurrencyFull, formatPercentage } from '../../utils/formatting';
 import { useCoinData } from '../../hooks/useCoinData';
 import { useInvestmentData } from '../../hooks/useInvestmentData';
-import { AirtablePriceService } from '../../services/airtablePriceService';
-import { ContentItem } from '../../types/index';
 
 interface CryptoVideoSimulatorProps {
   videoId: string;
@@ -32,124 +29,15 @@ export interface CoinData {
   logoUrl?: string;
 }
 
-export interface VideoData {
-  title: string;
-  channel: string;
-  views: number;
-  uploadDate: string;
-  duration: string;
-}
 
 export interface InvestmentDataPoint {
   date: string;
   value: number;
   change: number;
+  rawDate?: string;
 }
 
-// Helper function to get coin metadata (placeholder implementation)
-const getCoinMetadata = async (symbol: string): Promise<{
-  name: string;
-  category: string;
-  logoUrl: string;
-} | null> => {
-  // TODO: Implement real metadata fetching from Instruments service or other source
-  const commonCoins: Record<string, { name: string; category: string; logoUrl: string }> = {
-    'BTC': { name: 'Bitcoin', category: 'Cryptocurrency', logoUrl: '' },
-    'ETH': { name: 'Ethereum', category: 'Smart Contract Platform', logoUrl: '' },
-    'SOL': { name: 'Solana', category: 'Smart Contract Platform', logoUrl: '' },
-    'ADA': { name: 'Cardano', category: 'Smart Contract Platform', logoUrl: '' },
-    'AVAX': { name: 'Avalanche', category: 'Smart Contract Platform', logoUrl: '' },
-    'DOT': { name: 'Polkadot', category: 'Interoperability', logoUrl: '' },
-    'LINK': { name: 'Chainlink', category: 'Oracle', logoUrl: '' },
-    'MATIC': { name: 'Polygon', category: 'Layer 2', logoUrl: '' },
-    'UNI': { name: 'Uniswap', category: 'DeFi', logoUrl: '' },
-    'RENDER': { name: 'Render', category: 'Computing', logoUrl: '' },
-    'RNDR': { name: 'Render', category: 'Computing', logoUrl: '' },
-  };
-  
-  return commonCoins[symbol.toUpperCase()] || {
-    name: symbol,
-    category: 'Cryptocurrency',
-    logoUrl: ''
-  };
-};
 
-// 🔧 Enhanced coin data processing with validation
-const processCoinsFromContentItem = async (contentItem: ContentItem): Promise<CoinData[]> => {
-  if (!contentItem.coins_mentioned || contentItem.coins_mentioned.length === 0) {
-    console.log('❌ No coins mentioned in content item:', contentItem.title);
-    return [];
-  }
-
-  console.log('🔍 Processing coins for:', contentItem.title);
-  console.log('🪙 Raw coins mentioned:', contentItem.coins_mentioned);
-
-  // Validate symbols first
-  const priceService = new AirtablePriceService();
-  const validation = await priceService.validateSymbols(contentItem.coins_mentioned);
-  
-  console.log('✅ Valid symbols:', validation.valid);
-  console.log('❌ Invalid symbols:', validation.invalid);
-  console.log('🔄 Symbol mappings:', validation.mappings);
-
-  if (validation.invalid.length > 0) {
-    console.warn(`⚠️ Some symbols not found in price history: ${validation.invalid.join(', ')}`);
-  }
-
-  // Process only valid symbols
-  const coinDataPromises = validation.valid.map(async (symbol): Promise<CoinData | null> => {
-    try {
-      // Get price data for the publish date
-      const publishDate = contentItem.publish_date;
-      const priceResult = await priceService.getPriceOnDateSafe(symbol, publishDate);
-      
-      if (!priceResult.price) {
-        console.warn(`⚠️ No price data for ${symbol} on ${publishDate}: ${priceResult.error}`);
-        return null;
-      }
-
-      // Get current price for comparison
-      const currentPriceResult = await priceService.getPriceOnDateSafe(symbol, new Date().toISOString().split('T')[0]);
-      const currentPrice = currentPriceResult.price || priceResult.price; // Fallback to historical price
-
-      // Calculate price change
-      const priceChange = currentPrice && priceResult.price 
-        ? ((currentPrice - priceResult.price) / priceResult.price) * 100 
-        : 0;
-
-      // Get metadata
-      const metadata = await getCoinMetadata(symbol);
-
-      // Calculate return amount (will be updated based on allocation)
-      const returnAmount = currentPrice && priceResult.price 
-        ? currentPrice - priceResult.price 
-        : 0;
-
-      return {
-        symbol,
-        name: metadata?.name || symbol,
-        category: metadata?.category || 'Cryptocurrency',
-        logoUrl: metadata?.logoUrl || '',
-        currentPrice,
-        initialPrice: priceResult.price,
-        priceChange,
-        returnAmount,
-        isSelected: false,
-        allocation: 0
-      };
-    } catch (error) {
-      console.error(`❌ Error processing ${symbol}:`, error);
-      return null;
-    }
-  });
-
-  const coinDataResults = await Promise.all(coinDataPromises);
-  const validCoinData = coinDataResults.filter((coin): coin is CoinData => coin !== null);
-  
-  console.log(`✅ Successfully processed ${validCoinData.length}/${validation.valid.length} coins`);
-  
-  return validCoinData;
-};
 
 const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
   videoId,
@@ -168,11 +56,13 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
   console.log('📺 Video:', videoTitle);
   console.log('📅 Publish Date:', publishDate);
   const FIXED_INVESTMENT = 1000;
-  const [investmentDelay, setInvestmentDelay] = useState<'1hour' | '1day' | '1week'>('1day');
+  const [investmentDelay] = useState<'1hour' | '1day' | '1week'>('1day');
   const [investmentMode, setInvestmentMode] = useState<'equal' | 'custom'>('equal');
   const [showMethodology, setShowMethodology] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [useLiveData, setUseLiveData] = useState(false); // Start with legacy data
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // Key to force recalculation
   
   // Real data hooks
   const { 
@@ -186,8 +76,7 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
 
   const {
     investmentData: realInvestmentData,
-    loading: investmentLoading,
-    error: investmentError
+    loading: investmentLoading
   } = useInvestmentData({
     coinsData: realCoinsData,
     videoDate: publishDate,
@@ -195,7 +84,6 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
   });
   
   // Local state for user modifications
-  const [videoData, setVideoData] = useState<VideoData | null>(null);
   const [coinsData, setCoinsData] = useState<CoinData[]>([]);
   const [investmentData, setInvestmentData] = useState<InvestmentDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -218,18 +106,7 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
     setIsLoading(coinsLoading || investmentLoading);
   }, [coinsLoading, investmentLoading]);
 
-  // Initialize video data
-  useEffect(() => {
-    setVideoData({
-      title: videoTitle,
-      channel: 'Crypto Influencer',
-      views: 125000,
-      uploadDate: publishDate,
-      duration: '12:34'
-    });
-  }, [videoTitle, publishDate]);
 
-  const selectedCoins = coinsData.filter(coin => coin.isSelected);
   const totalReturn = investmentData.length > 0 
     ? investmentData[investmentData.length - 1].value - FIXED_INVESTMENT
     : 0;
@@ -253,6 +130,7 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
         allocation: coin.isSelected ? equalAllocation : 0
       }));
     });
+    setHasUnsavedChanges(true);
   };
 
   // Update allocations when switching to equal mode
@@ -274,10 +152,16 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
     setCoinsData(prev => prev.map(coin => 
       coin.symbol === symbol ? { ...coin, allocation: newAllocation } : coin
     ));
+    setHasUnsavedChanges(true);
   };
 
   const totalAllocation = coinsData.reduce((sum, coin) => coin.isSelected ? sum + coin.allocation : sum, 0);
   const isValidAllocation = Math.abs(totalAllocation - 100) < 0.01;
+
+  const handleRefreshPortfolio = () => {
+    setHasUnsavedChanges(false);
+    setRefreshKey(prev => prev + 1); // Force recalculation
+  };
 
   // Notify parent of profitability status
   useEffect(() => {
@@ -425,21 +309,33 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
           isValidAllocation={isValidAllocation}
           onToggleCoin={toggleCoinSelection}
           onUpdateAllocation={updateCoinAllocation}
-          onModeChange={setInvestmentMode}
+          onModeChange={(mode) => {
+            setInvestmentMode(mode);
+            setHasUnsavedChanges(true);
+          }}
         />
 
+        {/* Strategy Comparison */}
+        <StrategyComparison
+          key={refreshKey} // Force remount when refresh is clicked
+          portfolioValue={investmentData[investmentData.length - 1]?.value || FIXED_INVESTMENT}
+          portfolioReturn={totalReturn}
+          portfolioReturnPercentage={returnPercentage}
+          publishDate={publishDate}
+          coinsMentioned={coinsData.filter(c => c.isSelected).map(c => c.name)}
+          coinAllocations={coinsData.filter(c => c.isSelected).reduce((acc, coin) => ({
+            ...acc,
+            [coin.name]: coin.allocation
+          }), {})}
+          videoTitle={videoTitle}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onRefresh={handleRefreshPortfolio}
+        />
 
         {/* Performance Chart */}
         <CompactPerformanceChart
           investmentData={investmentData}
           investmentAmount={FIXED_INVESTMENT}
-        />
-
-        {/* Strategy Comparison */}
-        <StrategyComparison
-          portfolioValue={investmentData[investmentData.length - 1]?.value || FIXED_INVESTMENT}
-          portfolioReturn={totalReturn}
-          portfolioReturnPercentage={returnPercentage}
         />
 
         {/* Footer - Methodology & Disclaimer */}

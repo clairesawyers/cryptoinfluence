@@ -3,7 +3,7 @@ import { useInvestmentSimulation } from '../../hooks/useInvestmentSimulation';
 import { InstrumentsService } from '../../services/instrumentsService';
 import { AirtablePriceService } from '../../services/airtablePriceService';
 import { formatCurrencyFull, formatPercentage } from '../../utils/formatting';
-import { Play, Loader, AlertCircle, CheckCircle, TrendingUp, TrendingDown, Settings } from 'lucide-react';
+import { Play, Loader, AlertCircle, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { EnvDebug } from '../EnvDebug';
 
 interface LiveDataSimulatorProps {
@@ -20,19 +20,24 @@ export const LiveDataSimulator: React.FC<LiveDataSimulatorProps> = ({
   channelName = 'Crypto Channel'
 }) => {
   const [testMode, setTestMode] = useState(false);
-  const [testResults, setTestResults] = useState<{
-    instruments: any[];
-    prices: any[];
+  interface TestResults {
+    instruments: Array<{ symbol: string; name: string }>;
+    prices: Array<{ symbol: string; price: number; type: string }>;
     errors: string[];
-  }>({ instruments: [], prices: [], errors: [] });
+  }
+  
+  const [testResults, setTestResults] = useState<TestResults>({ 
+    instruments: [], 
+    prices: [], 
+    errors: [] 
+  });
 
   const {
     simulation,
     strategies,
     loading,
     error,
-    runSimulation,
-    clearSimulation
+    runSimulation
   } = useInvestmentSimulation();
 
   const handleRunSimulation = () => {
@@ -55,7 +60,7 @@ export const LiveDataSimulator: React.FC<LiveDataSimulatorProps> = ({
 
   const handleTestServices = async () => {
     setTestMode(true);
-    const results = { instruments: [], prices: [], errors: [] };
+    const results: TestResults = { instruments: [], prices: [], errors: [] };
     
     try {
       console.log('🧪 Testing Instruments Service...');
@@ -85,7 +90,7 @@ export const LiveDataSimulator: React.FC<LiveDataSimulatorProps> = ({
       // Test getting latest prices
       try {
         const symbols = ['BTC', 'ETH', 'SOL'];
-        const prices = [];
+        const prices: Array<{ symbol: string; price: number; type: string }> = [];
         for (const symbol of symbols) {
           const price = await priceService.getLatestPrice(symbol);
           if (price) {
