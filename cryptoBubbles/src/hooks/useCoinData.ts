@@ -100,7 +100,7 @@ export const useCoinData = ({ videoDate, coinNames }: UseCoinDataProps): UseCoin
       
       // STEP 6: Process each found coin with price data
       console.log('\n📊 STEP 6: Fetch Price Data for Each Coin');
-      const coinDataPromises = foundCoins.map(async (coin, index) => {
+      const coinDataPromises = foundCoins.map(async (coin) => {
         try {
           console.log(`\n🔍 Processing coin: ${coin.name} (${coin.ticker})`);
           console.log(`📅 Video Date: ${videoDate}`);
@@ -363,7 +363,7 @@ const getCoinName = (symbol: string): string => {
 };
 
 // Original fallback mock data (kept for reference)
-const getMockCoinData = (): CoinData[] => [
+/* const getMockCoinData = (): CoinData[] => [
   {
     symbol: 'BTC',
     name: 'Bitcoin',
@@ -430,4 +430,4 @@ const getMockCoinData = (): CoinData[] => [
     priceChange: 12.50,
     returnAmount: 20.81
   }
-];
+]; */

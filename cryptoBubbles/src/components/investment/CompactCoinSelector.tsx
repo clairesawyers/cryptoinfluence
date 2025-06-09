@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, TrendingUp, TrendingDown, AlertCircle, ChevronDown, Settings } from 'lucide-react';
+import { Check, TrendingUp, TrendingDown, AlertCircle, ChevronDown, Settings, MessageSquare } from 'lucide-react';
 import { CoinData } from './CryptoVideoSimulator';
 import { formatPercentage } from '../../utils/formatting';
 
@@ -27,9 +27,14 @@ export const CompactCoinSelector: React.FC<CompactCoinSelectorProps> = ({
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
       <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-medium text-gray-200">Coins Mentioned</h3>
-          <p className="text-xs text-gray-500 mt-1">Click coins to select • Dotted borders indicate editable fields</p>
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-gray-400/20 text-gray-400 rounded-lg">
+            <MessageSquare size={18} />
+          </div>
+          <div>
+            <h3 className="text-lg font-medium text-gray-200">Coins Mentioned</h3>
+            <p className="text-xs text-gray-500 mt-1">Click coins to select • Dotted borders indicate editable fields</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {/* Settings Button */}
@@ -191,6 +196,7 @@ export const CompactCoinSelector: React.FC<CompactCoinSelectorProps> = ({
             {/* Allocation Input (only for selected coins in custom mode) */}
             {coin.isSelected && investmentMode === 'custom' && (
               <div className="border-t border-gray-700 pt-3">
+                <div className="text-xs text-gray-500 mb-2">Invested:</div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs text-gray-400">Allocation</label>
                   <div className="flex items-center gap-1">
@@ -222,6 +228,7 @@ export const CompactCoinSelector: React.FC<CompactCoinSelectorProps> = ({
             {/* Equal mode - minimal display */}
             {coin.isSelected && investmentMode === 'equal' && (
               <div className="border-t border-gray-700 pt-2">
+                <div className="text-xs text-gray-500 mb-1">Invested:</div>
                 <div className="text-center">
                   <span className="text-xs text-gray-500">
                     {coin.allocation.toFixed(1)}% • ${(1000 * (coin.allocation / 100)).toFixed(0)}

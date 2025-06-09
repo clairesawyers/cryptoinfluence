@@ -79,7 +79,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             Try Again
           </button>
 
-          {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
+          {import.meta.env.DEV && this.state.errorInfo && (
             <details className="mt-4">
               <summary className="text-red-300 cursor-pointer text-sm">
                 Stack Trace (Development Only)

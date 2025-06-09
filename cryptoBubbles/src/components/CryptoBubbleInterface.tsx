@@ -3,16 +3,47 @@ import { BubbleHeader } from './BubbleHeader';
 import { BubbleControls } from './BubbleControls';
 import { BubbleCanvas } from './BubbleCanvas';
 import { useBubbleData } from '../hooks/useBubbleData';
-import { formatViewCount, formatRelativeTime } from '../utils/formatting';
+import { formatViewCount } from '../utils/formatting';
 import { ExternalLink, Heart, Eye, Clock, TrendingUp, X, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import CryptoVideoSimulator from './investment/CryptoVideoSimulator';
 import { QueryDebugTool } from './QueryDebugTool';
+
+// Coin name mapping for tooltips
+const COIN_NAMES: Record<string, string> = {
+  'BITCOIN': 'Bitcoin',
+  'BTC': 'Bitcoin',
+  'ETHEREUM': 'Ethereum', 
+  'ETH': 'Ethereum',
+  'CARDANO': 'Cardano',
+  'ADA': 'Cardano',
+  'SOLANA': 'Solana',
+  'SOL': 'Solana',
+  'POLKADOT': 'Polkadot',
+  'DOT': 'Polkadot',
+  'DOGECOIN': 'Dogecoin',
+  'DOGE': 'Dogecoin',
+  'AVALANCHE': 'Avalanche',
+  'AVAX': 'Avalanche',
+  'CHAINLINK': 'Chainlink',
+  'LINK': 'Chainlink',
+  'POLYGON': 'Polygon',
+  'MATIC': 'Polygon',
+  'XRP': 'Ripple',
+  'RIPPLE': 'Ripple',
+  'BNB': 'Binance Coin',
+  'BINANCE COIN': 'Binance Coin',
+  'SHIB': 'Shiba Inu',
+  'SHIBA INU': 'Shiba Inu',
+  'LITECOIN': 'Litecoin',
+  'LTC': 'Litecoin',
+  'UNISWAP': 'Uniswap',
+  'UNI': 'Uniswap'
+};
 
 export const CryptoBubbleInterface: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 1200, height: 600 });
   const [expandedSummary, setExpandedSummary] = useState(false);
-  const [isProfitable, setIsProfitable] = useState(true);
   const [showDebugTool, setShowDebugTool] = useState(false);
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(true);
   const [showInvestmentSimulator, setShowInvestmentSimulator] = useState(false);
@@ -98,9 +129,10 @@ export const CryptoBubbleInterface: React.FC = () => {
           <div className="w-80 h-full flex flex-col">
           {selectedCard ? (
             <div className="bg-gray-900 border-2 border-primary-600 rounded-xl m-6 shadow-card-intense relative flex-1 flex flex-col overflow-hidden">
-              {/* Thumbnail Preview */}
-              {selectedCard.thumbnail_url && (
-                <div className="mb-6">
+              <div className="p-3 flex-1 flex flex-col overflow-y-auto">
+                {/* Thumbnail Preview */}
+                {selectedCard.thumbnail_url && (
+                  <div className="mb-6">
                   <div 
                     onClick={() => selectedCard?.watch_url && window.open(selectedCard.watch_url, '_blank', 'noopener,noreferrer')}
                     className="aspect-video bg-gray-800 rounded-lg border-2 border-gray-600 overflow-hidden shadow-panel-raised relative group cursor-pointer"
@@ -155,7 +187,7 @@ export const CryptoBubbleInterface: React.FC = () => {
                 {selectedCard.short_summary && (
                   <div className="mb-4">
                     <p 
-                      className={`text-gray-300 text-sm leading-relaxed transition-all duration-300 ${
+                      className={`text-gray-300 text-xs leading-relaxed transition-all duration-300 ${
                         expandedSummary ? '' : 'line-clamp-3'
                       }`}
                     >
@@ -164,9 +196,10 @@ export const CryptoBubbleInterface: React.FC = () => {
                     {selectedCard.short_summary.length > 100 && (
                       <button
                         onClick={() => setExpandedSummary(!expandedSummary)}
-                        className="text-primary-400 hover:text-primary-300 text-sm mt-1 transition-colors"
+                        className="text-gray-400 hover:text-gray-300 text-xs mt-1 transition-colors"
+                        title={expandedSummary ? "Show less" : "Read more"}
                       >
-                        {expandedSummary ? 'Show less' : 'Read more'}
+                        {expandedSummary ? '...show less' : '...'}
                       </button>
                     )}
                   </div>
@@ -183,14 +216,20 @@ export const CryptoBubbleInterface: React.FC = () => {
                       <span className="text-gray-400 text-xs uppercase tracking-wide">Coins Mentioned</span>
                     </div>
                     <div className="flex flex-wrap gap-1">
-                      {selectedCard.coins_mentioned.map((coin, index) => (
-                        <span 
-                          key={index}
-                          className="inline-flex items-center px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-medium text-gray-200 hover:bg-gray-700 transition-colors"
-                        >
-                          {coin}
-                        </span>
-                      ))}
+                      {selectedCard.coins_mentioned.map((coin, index) => {
+                        const coinUpper = coin.toUpperCase();
+                        const coinName = COIN_NAMES[coinUpper] || coin;
+                        
+                        return (
+                          <span 
+                            key={index}
+                            className="inline-flex items-center px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-medium text-gray-200 hover:bg-gray-700 transition-colors cursor-help"
+                            title={coinName}
+                          >
+                            {coin}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -244,6 +283,7 @@ export const CryptoBubbleInterface: React.FC = () => {
                   <TrendingUp size={16} />
                   Investment Simulator
                 </button>
+              </div>
               </div>
 
               {/* Close Button */}
@@ -383,7 +423,6 @@ export const CryptoBubbleInterface: React.FC = () => {
                   videoTitle={selectedCard.title}
                   publishDate={selectedCard.published_at}
                   coinsMentioned={selectedCard.coins_mentioned || ['Bitcoin', 'Ethereum', 'Solana']}
-                  onProfitabilityChange={setIsProfitable}
                 />
               </div>
             </div>
