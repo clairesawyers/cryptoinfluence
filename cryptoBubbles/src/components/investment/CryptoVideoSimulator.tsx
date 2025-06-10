@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, ChevronDown, Settings } from 'lucide-react';
+import { BarChart3, ChevronDown } from 'lucide-react';
 import { CompactCoinSelector } from './CompactCoinSelector';
 import { CompactPerformanceChart } from './CompactPerformanceChart';
 import { StrategyComparison } from './DynamicStrategyComparison';
@@ -60,7 +60,6 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
   const [investmentMode, setInvestmentMode] = useState<'equal' | 'custom'>('equal');
   const [showMethodology, setShowMethodology] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
-  const [useLiveData, setUseLiveData] = useState(false); // Start with legacy data
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // Key to force recalculation
   
@@ -221,82 +220,28 @@ const CryptoVideoSimulator: React.FC<CryptoVideoSimulatorProps> = ({
     );
   }
 
-  // If using live data, show the new simulator
-  if (useLiveData) {
-    return (
-      <div className="h-full overflow-y-auto p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
-          {/* Data Source Toggle */}
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-100">Data Source</h3>
-                <p className="text-xs text-gray-400">Switch between legacy mock data and live Airtable data</p>
-              </div>
-              <button
-                onClick={() => setUseLiveData(false)}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Settings className="w-4 h-4" />
-                Using Live Data
-              </button>
-            </div>
-          </div>
-
-          <ErrorBoundary>
-            <LiveDataSimulator
-              coinMentions={coinsMentioned || []}
-              videoTitle={videoTitle}
-              publishDate={publishDate}
-              channelName="Crypto Influencer"
-            />
-          </ErrorBoundary>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="h-full overflow-y-auto p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Initial Investment & Data Source Section */}
-        <div className="flex gap-4">
-          {/* Initial Investment Section - 2/3 width */}
-          <div className="flex-1 bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-100 mb-4">Initial Investment</h3>
-            
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-gray-300 min-w-[120px]">Initial Investment</label>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-400">$</span>
-                  <div className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm font-medium text-gray-300">
-                    1,000
-                  </div>
-                  <span className="text-xs text-gray-500">(uneditable)</span>
+        {/* Initial Investment Section */}
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-100 mb-4">Initial Investment</h3>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-gray-300 min-w-[120px]">Initial Investment</label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-400">$</span>
+                <div className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm font-medium text-gray-300">
+                  1,000
                 </div>
-              </div>
-              
-              <div className="text-sm text-gray-400">
-                Distribute amongst top mentioned cryptocurrencies.
+                <span className="text-xs text-gray-500">(uneditable)</span>
               </div>
             </div>
-          </div>
-
-          {/* Data Source Toggle - 1/3 width */}
-          <div className="w-1/3 bg-gray-800 border border-gray-700 rounded-lg p-4">
-            <div className="space-y-3">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-100">Data Source</h3>
-                <p className="text-xs text-gray-400">Switch between legacy mock data and live Airtable data</p>
-              </div>
-              <button
-                onClick={() => setUseLiveData(true)}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors text-sm"
-              >
-                <Settings className="w-4 h-4" />
-                Using Legacy Data
-              </button>
+            
+            <div className="text-sm text-gray-400">
+              Distribute amongst top mentioned cryptocurrencies.
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Trophy, TrendingUp, TrendingDown, DollarSign, Coins, Bitcoin, Info } from 'lucide-react';
 import { formatCurrencyFull, formatPercentage } from '../../utils/formatting';
 import { AirtablePriceService } from '../../services/airtablePriceService';
@@ -41,6 +41,33 @@ interface DynamicStrategyComparisonProps {
 const StrategyCard: React.FC<StrategyCardProps> = ({ strategy, isBestStrategy, hasUnsavedChanges, onRefresh }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const showRefresh = strategy.id === 'portfolio' && hasUnsavedChanges && onRefresh;
+  
+  // Refs for timeout management
+  const timeoutRef = React.useRef<number | null>(null);
+  
+  // Debounce tooltip to prevent flickering
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = window.setTimeout(() => setShowTooltip(true), 100);
+  };
+  
+  const handleMouseLeave = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    setShowTooltip(false);
+  };
+  
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className={`
@@ -65,8 +92,8 @@ const StrategyCard: React.FC<StrategyCardProps> = ({ strategy, isBestStrategy, h
         <h3 className="ml-3 text-base font-semibold text-gray-200">{strategy.name}</h3>
         <div 
           className="ml-2 cursor-pointer relative"
-          onMouseEnter={() => setShowTooltip(true)}
-          onMouseLeave={() => setShowTooltip(false)}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
           <Info className="w-4 h-4 text-gray-400 hover:text-gray-300 transition-colors" />
           {showTooltip && (
@@ -99,21 +126,25 @@ const StrategyCard: React.FC<StrategyCardProps> = ({ strategy, isBestStrategy, h
           <>
             <div className={`${showRefresh ? 'opacity-30 blur-sm' : ''} transition-all duration-200`}>
               <div className="text-2xl font-bold text-gray-100">
-                {formatCurrencyFull(strategy.currentValue)}
+                {isNaN(strategy.currentValue) ? '—' : formatCurrencyFull(strategy.currentValue)}
               </div>
               <div className={`font-medium flex items-center gap-2 ${strategy.color}`}>
-                {strategy.return > 0 ? (
-                  <TrendingUp size={16} />
-                ) : strategy.return < 0 ? (
-                  <TrendingDown size={16} />
-                ) : (
-                  <DollarSign size={16} />
+                {!isNaN(strategy.return) && (
+                  <>
+                    {strategy.return > 0 ? (
+                      <TrendingUp size={16} />
+                    ) : strategy.return < 0 ? (
+                      <TrendingDown size={16} />
+                    ) : (
+                      <DollarSign size={16} />
+                    )}
+                  </>
                 )}
                 <span className="text-lg">
-                  {strategy.return >= 0 ? '+' : ''}{formatCurrencyFull(strategy.return)}
+                  {isNaN(strategy.return) ? '—' : `${strategy.return >= 0 ? '+' : ''}${formatCurrencyFull(strategy.return)}`}
                 </span>
                 <span className="text-sm">
-                  ({strategy.returnPercentage >= 0 ? '+' : ''}{formatPercentage(strategy.returnPercentage)})
+                  {isNaN(strategy.returnPercentage) ? '' : `(${strategy.returnPercentage >= 0 ? '+' : ''}${formatPercentage(strategy.returnPercentage)})`}
                 </span>
               </div>
             </div>
@@ -142,6 +173,27 @@ const StrategyCard: React.FC<StrategyCardProps> = ({ strategy, isBestStrategy, h
       </div>
     </div>
   );
+};
+
+// Helper function to format date in human readable format
+const formatHumanDate = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'long' });
+  const year = date.getFullYear();
+  
+  // Add ordinal suffix to day
+  const suffix = (day: number) => {
+    if (day > 3 && day < 21) return 'th';
+    switch (day % 10) {
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
+    }
+  };
+  
+  return `${day}${suffix(day)} ${month} ${year}`;
 };
 
 export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
@@ -205,7 +257,7 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
       const portfolioStrategy: Strategy = {
         id: 'portfolio',
         name: 'Video Portfolio',
-        description: `Investing equally across the ${coinsMentioned.length} coins mentioned in "${videoTitle}" on ${investmentDateStr}.`,
+        description: `Investing equally across the ${coinsMentioned.length} coins mentioned in "${videoTitle}" on ${formatHumanDate(investmentDateStr)}.`,
         icon: <Coins size={18} />,
         initialValue: 1000,
         currentValue: 1000, // Will be updated
@@ -223,7 +275,7 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
       const btcStrategy: Strategy = {
         id: 'bitcoin',
         name: 'BTC Only',
-        description: `Investing the entire $1,000 solely in Bitcoin on ${investmentDateStr} instead of the mentioned coins.`,
+        description: `Investing the entire $1,000 solely in Bitcoin on ${formatHumanDate(investmentDateStr)} instead of the mentioned coins.`,
         icon: <Bitcoin size={18} />,
         initialValue: 1000,
         currentValue: 1000,
@@ -242,6 +294,10 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
       try {
         console.log('💰 Calculating Bitcoin strategy...');
         
+        // Get yesterday's date for current price check
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        
         // First check what symbols are available
         try {
           const availableSymbols = await priceService.getAvailableSymbols();
@@ -255,7 +311,7 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
         // Try different Bitcoin symbols in order of preference
         const bitcoinSymbols = ['Bitcoin', 'BTC', 'BITCOIN'];
         let btcPurchasePrice: number | null = null;
-        let btcCurrentPrice: number | null = null;
+        let btcCurrentPriceData: { price: number; date: string } | null = null;
         let usedSymbol = '';
         
         for (const symbol of bitcoinSymbols) {
@@ -263,8 +319,8 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
           try {
             btcPurchasePrice = await priceService.getPriceOnDate(symbol, investmentDateStr);
             if (btcPurchasePrice) {
-              btcCurrentPrice = await priceService.getLatestPrice(symbol);
-              if (btcCurrentPrice) {
+              btcCurrentPriceData = await priceService.getLatestPriceWithDate(symbol);
+              if (btcCurrentPriceData) {
                 usedSymbol = symbol;
                 console.log(`✅ Found Bitcoin data using symbol: ${symbol}`);
                 break;
@@ -281,20 +337,46 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
           throw new Error(`No Bitcoin price data for ${investmentDateStr} with any symbol`);
         }
 
-        console.log(`💰 Bitcoin current price: $${btcCurrentPrice} (using ${usedSymbol})`);
-        
-        if (!btcCurrentPrice) {
+        if (!btcCurrentPriceData) {
           throw new Error('No current Bitcoin price data');
+        }
+        
+        console.log(`💰 Bitcoin current price: $${btcCurrentPriceData.price} (${btcCurrentPriceData.date}) (using ${usedSymbol})`);
+        
+        // Check if the price is current
+        const priceDate = new Date(btcCurrentPriceData.date);
+        const daysDifference = Math.floor((yesterday.getTime() - priceDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysDifference > 1) {
+          console.warn(`⚠️ Bitcoin price is stale (${btcCurrentPriceData.date}), ${daysDifference} days old`);
+          
+          // Update with "-" for return values
+          setStrategies(prev => prev.map(strategy => 
+            strategy.id === 'bitcoin' 
+              ? {
+                  ...strategy,
+                  currentValue: NaN,
+                  return: NaN,
+                  returnPercentage: NaN,
+                  color: 'text-gray-400',
+                  bgColor: 'bg-gray-500/10',
+                  borderColor: 'border-gray-500/30',
+                  isCalculating: false,
+                  calculationError: `Current Bitcoin price unavailable (last update: ${btcCurrentPriceData.date})`
+                }
+              : strategy
+          ));
+          return;
         }
 
         const btcQuantity = 1000 / btcPurchasePrice;
-        const btcCurrentValue = btcQuantity * btcCurrentPrice;
+        const btcCurrentValue = btcQuantity * btcCurrentPriceData.price;
         const btcReturn = btcCurrentValue - 1000;
         const btcReturnPercentage = (btcReturn / 1000) * 100;
 
         console.log('✅ Bitcoin strategy calculated:', {
           purchasePrice: btcPurchasePrice,
-          currentPrice: btcCurrentPrice,
+          currentPrice: btcCurrentPriceData.price,
           quantity: btcQuantity,
           currentValue: btcCurrentValue,
           return: btcReturn,
@@ -337,9 +419,17 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
         console.log('💰 Calculating Video Portfolio strategy...');
         console.log(`🪙 Coins to process: ${coinsMentioned.join(', ')}`);
         
+        // Get yesterday's date for current price check
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        console.log(`📅 Checking for current prices as of: ${yesterdayStr}`);
+        
         let totalPortfolioValue = 0;
         const defaultAllocationPerCoin = 1000 / coinsMentioned.length; // Equal allocation by default
         let successfulCoins = 0;
+        let hasCurrentPrices = true;
+        let missingCurrentPriceCoins: string[] = [];
         
         for (const coinName of coinsMentioned) {
           try {
@@ -361,14 +451,29 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
               continue;
             }
             
-            // Get current price
-            const currentPrice = await priceService.getLatestPrice(coinName);
-            console.log(`💰 ${coinName} current price: $${currentPrice}`);
+            // Get current price and verify it's recent
+            const currentPriceData = await priceService.getLatestPriceWithDate(coinName);
             
-            if (!currentPrice) {
-              console.warn(`⚠️ No current price for ${coinName}`);
+            if (!currentPriceData || !currentPriceData.date) {
+              console.warn(`⚠️ No price data for ${coinName}`);
+              missingCurrentPriceCoins.push(coinName);
+              hasCurrentPrices = false;
               continue;
             }
+            
+            // Check if the price is from yesterday or today
+            const priceDate = new Date(currentPriceData.date);
+            const daysDifference = Math.floor((yesterday.getTime() - priceDate.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (daysDifference > 1) {
+              console.warn(`⚠️ Price for ${coinName} is stale (${currentPriceData.date}), ${daysDifference} days old`);
+              missingCurrentPriceCoins.push(coinName);
+              hasCurrentPrices = false;
+              continue;
+            }
+            
+            const currentPrice = currentPriceData.price;
+            console.log(`💰 ${coinName} current price: $${currentPrice} (${currentPriceData.date})`);
             
             // Calculate this coin's contribution to portfolio
             const coinQuantity = coinAllocation / purchasePrice;
@@ -380,13 +485,41 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
             
           } catch (error) {
             console.error(`❌ Error processing coin ${coinName}:`, error);
+            missingCurrentPriceCoins.push(coinName);
+            hasCurrentPrices = false;
           }
         }
         
         console.log(`📊 Portfolio calculation complete: ${successfulCoins}/${coinsMentioned.length} coins processed`);
         console.log(`💰 Total portfolio value: $${totalPortfolioValue.toFixed(2)}`);
         
-        if (successfulCoins > 0) {
+        // If we're missing current prices for any coins, show "-" instead
+        if (!hasCurrentPrices || successfulCoins === 0) {
+          console.warn(`⚠️ Missing current prices for: ${missingCurrentPriceCoins.join(', ')}`);
+          
+          // Update with "-" for return values
+          setStrategies(prev => prev.map(strategy => 
+            strategy.id === 'portfolio' 
+              ? {
+                  ...strategy,
+                  currentValue: NaN, // This will display as "-"
+                  return: NaN,
+                  returnPercentage: NaN,
+                  color: 'text-gray-400',
+                  bgColor: 'bg-gray-500/10',
+                  borderColor: 'border-gray-500/30',
+                  isCalculating: false,
+                  calculationError: missingCurrentPriceCoins.length > 0 
+                    ? `Current price data unavailable for: ${missingCurrentPriceCoins.join(', ')}`
+                    : 'No current price data available'
+                }
+              : strategy
+          ));
+          return;
+        }
+        
+        if (successfulCoins > 0 && successfulCoins === coinsMentioned.length) {
+          // Only calculate returns if we have ALL coins with current prices
           const portfolioReturn = totalPortfolioValue - 1000;
           const portfolioReturnPercentage = (portfolioReturn / 1000) * 100;
           
@@ -467,12 +600,50 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
     );
   }
 
-  // Find the winning strategy (excluding calculating ones)
-  const completedStrategies = strategies.filter(s => !s.isCalculating && !s.calculationError);
-  const winningStrategy = completedStrategies.reduce((prev, current) => 
-    current.currentValue > prev.currentValue ? current : prev, 
-    completedStrategies[0] || strategies[0]
-  );
+  // Find the winning strategy - only after ALL strategies have completed loading
+  const winningStrategy = useMemo(() => {
+    // Check if all strategies have finished calculating (success or error)
+    const allStrategiesComplete = strategies.every(s => !s.isCalculating);
+    
+    if (!allStrategiesComplete) {
+      // Don't award a winner until all strategies are done loading
+      return null;
+    }
+    
+    // Only consider strategies that completed successfully with valid data
+    const completedStrategies = strategies.filter(s => 
+      !s.isCalculating && 
+      !s.calculationError && 
+      !isNaN(s.currentValue) && 
+      s.currentValue > 0
+    );
+    
+    if (completedStrategies.length === 0) {
+      // If no strategies completed successfully, don't show a winner
+      return null;
+    }
+    
+    // Find strategy with highest current value, with tie-breaking by return percentage
+    return completedStrategies.reduce((prev, current) => {
+      const valueDifference = current.currentValue - prev.currentValue;
+      const threshold = 0.01; // $0.01 threshold to prevent flickering on tiny differences
+      
+      // First compare by current value (with threshold)
+      if (valueDifference > threshold) return current;
+      if (valueDifference < -threshold) return prev;
+      
+      // Tie-breaker: higher return percentage wins
+      const percentageDiff = current.returnPercentage - prev.returnPercentage;
+      if (Math.abs(percentageDiff) < 0.001) {
+        // If very close, prefer the current winner to reduce flickering
+        return prev;
+      }
+      return current.returnPercentage > prev.returnPercentage ? current : prev;
+    }, completedStrategies[0]);
+  }, [strategies]);
+
+  // Check if any strategies are still calculating
+  const hasCalculatingStrategies = strategies.some(s => s.isCalculating);
 
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
@@ -480,8 +651,16 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
         <div className="p-2 bg-yellow-500/20 text-yellow-400 rounded-lg">
           <Trophy size={18} />
         </div>
-        <div>
-          <h3 className="text-lg font-medium text-gray-200">Investment Strategy Comparison</h3>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-medium text-gray-200">Investment Strategy Comparison</h3>
+            {hasCalculatingStrategies && (
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-gray-400">Calculating...</span>
+              </div>
+            )}
+          </div>
           {dateRange && (
             <p className="text-sm text-gray-400">
               Performance from {new Date(dateRange.start).toLocaleDateString()} → Present
@@ -514,7 +693,7 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
               <span className="text-lg">🏆</span>
               <span>
                 <span className="font-bold text-yellow-400">Best Strategy:</span> {winningStrategy.name} 
-                outperformed other strategies with a <span className={`font-bold ${winningStrategy.color}`}>
+                {' '}outperformed other strategies with a <span className={`font-bold ${winningStrategy.color}`}>
                   {winningStrategy.returnPercentage >= 0 ? '+' : ''}{formatPercentage(winningStrategy.returnPercentage)} return
                 </span>
               </span>
@@ -523,7 +702,7 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
               <span className="text-lg">💡</span>
               <span>
                 <span className="font-medium text-gray-200">Analysis:</span> This comparison shows what would have happened 
-                if you invested $1,000 using different strategies on {dateRange?.start}
+                if you invested $1,000 using different strategies on {dateRange?.start ? formatHumanDate(dateRange.start) : 'the investment date'}
               </span>
             </p>
             <p className="flex items-start gap-2 text-sm text-gray-400">
@@ -536,11 +715,6 @@ export const StrategyComparison: React.FC<DynamicStrategyComparisonProps> = ({
           </div>
         </div>
       )}
-      
-      {/* Data Source Disclaimer */}
-      <div className="mt-3 text-xs text-gray-500 text-center">
-        *Price data sourced from Airtable • Updated daily
-      </div>
     </div>
   );
 };

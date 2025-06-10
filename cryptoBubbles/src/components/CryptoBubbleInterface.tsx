@@ -8,6 +8,14 @@ import { ExternalLink, Heart, Eye, Clock, TrendingUp, X, ChevronLeft, ChevronRig
 import CryptoVideoSimulator from './investment/CryptoVideoSimulator';
 import { QueryDebugTool } from './QueryDebugTool';
 
+// Mobile components
+import { useMobileDetect } from '../hooks/useMobileDetect';
+import { MobileLayout } from './mobile/MobileLayout';
+import { MobileHeader } from './mobile/MobileHeader';
+import { MobileBubbleControls } from './mobile/MobileBubbleControls';
+import { MobileBubbleCanvasWrapper } from './mobile/MobileBubbleCanvasWrapper';
+import { MobileVideoList } from './mobile/MobileVideoGrid';
+
 // Coin name mapping for tooltips
 const COIN_NAMES: Record<string, string> = {
   'BITCOIN': 'Bitcoin',
@@ -47,6 +55,10 @@ export const CryptoBubbleInterface: React.FC = () => {
   const [showDebugTool, setShowDebugTool] = useState(false);
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(true);
   const [showInvestmentSimulator, setShowInvestmentSimulator] = useState(false);
+  const [mobileView, setMobileView] = useState<'canvas' | 'list'>('canvas');
+  
+  // Mobile detection
+  const detection = useMobileDetect();
   
   const {
     bubbles,
@@ -77,19 +89,26 @@ export const CryptoBubbleInterface: React.FC = () => {
   useEffect(() => {
     const updateCanvasSize = () => {
       if (containerRef.current) {
-        // Account for the side panel only when it's open
-        const panelWidth = isDetailsPanelOpen ? 320 : 0; // w-80 = 320px
-        const availableWidth = window.innerWidth - panelWidth - 40; // panel + 40px total padding
-        const newWidth = Math.max(600, availableWidth);
-        const newHeight = Math.max(400, window.innerHeight - 200); // Account for header/controls
+        // Get the actual container dimensions
+        const rect = containerRef.current.getBoundingClientRect();
+        const newWidth = Math.max(600, rect.width - 10); // Subtract a bit for padding
+        const newHeight = Math.max(400, rect.height - 10);
         setCanvasSize({ width: newWidth, height: newHeight });
       }
     };
 
+    // Update immediately
     updateCanvasSize();
+    
+    // Add a small delay to ensure DOM is updated when panel toggles
+    const timeoutId = setTimeout(updateCanvasSize, 100);
+    
     window.addEventListener('resize', updateCanvasSize);
     
-    return () => window.removeEventListener('resize', updateCanvasSize);
+    return () => {
+      window.removeEventListener('resize', updateCanvasSize);
+      clearTimeout(timeoutId);
+    };
   }, [isDetailsPanelOpen]);
 
   if (error) {
@@ -108,6 +127,116 @@ export const CryptoBubbleInterface: React.FC = () => {
     );
   }
 
+  // Mobile Layout
+  if (detection.isMobile) {
+    return (
+      <MobileLayout
+        header={
+          <MobileHeader 
+            title="Crypto Influencers"
+            showBackButton={false}
+            showMenuButton={false}
+            rightElement={
+              <button
+                onClick={() => setMobileView(mobileView === 'canvas' ? 'list' : 'canvas')}
+                className="p-2 bg-gray-800 rounded-lg text-gray-300 text-sm"
+              >
+                {mobileView === 'canvas' ? 'List' : 'Canvas'}
+              </button>
+            }
+          />
+        }
+        footer={
+          <MobileBubbleControls
+            selectedDate={selectedDate}
+            viewMode={viewMode}
+            loading={loading}
+            onDateChange={actions.changeDate}
+            onViewModeChange={actions.changeViewMode}
+          />
+        }
+      >
+        {/* Mobile Content */}
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <div className="text-gray-400">Loading crypto influencers...</div>
+            </div>
+          </div>
+        ) : bubbles.length === 0 ? (
+          <div className="flex items-center justify-center h-full p-8">
+            <div className="text-center">
+              <div className="text-gray-300 text-lg font-medium mb-2">No videos posted</div>
+              <div className="text-gray-500 text-sm">
+                No crypto influencer content found for this {viewMode}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {mobileView === 'canvas' ? (
+              <MobileBubbleCanvasWrapper
+                bubbles={bubbles}
+                onCardClick={actions.selectCard}
+                canvasSize={canvasSize}
+              />
+            ) : (
+              <MobileVideoList
+                cards={bubbles}
+                selectedCard={selectedCard}
+                onCardSelect={actions.selectCard}
+                className="h-full"
+              />
+            )}
+            
+            {/* Mobile Video Details Modal */}
+            {selectedCard && (
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+                <div className="bg-gray-900 w-full max-h-[80vh] rounded-t-xl overflow-hidden animate-slide-up">
+                  <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-gray-100">Video Details</h3>
+                    <button
+                      onClick={() => actions.selectCard(null)}
+                      className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                      <X size={20} className="text-gray-400" />
+                    </button>
+                  </div>
+                  <div className="p-4 overflow-y-auto max-h-[70vh]">
+                    {/* Reuse the desktop video details content here */}
+                    <h4 className="text-base font-semibold text-gray-100 mb-2">{selectedCard.title}</h4>
+                    <p className="text-sm text-primary-400 mb-4">{selectedCard.influencer.display_name}</p>
+                    {selectedCard.short_summary && (
+                      <p className="text-sm text-gray-300 mb-4">{selectedCard.short_summary}</p>
+                    )}
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="bg-gray-800 p-3 rounded-lg">
+                        <div className="text-xs text-gray-400 mb-1">Views</div>
+                        <div className="text-base font-semibold text-gray-100">{formatViewCount(selectedCard.view_count)}</div>
+                      </div>
+                      <div className="bg-gray-800 p-3 rounded-lg">
+                        <div className="text-xs text-gray-400 mb-1">Likes</div>
+                        <div className="text-base font-semibold text-gray-100">{formatViewCount(selectedCard.like_count)}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowInvestmentSimulator(true)}
+                      className="w-full bg-primary-600 text-white py-3 rounded-lg font-medium"
+                    >
+                      Open Investment Simulator
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </MobileLayout>
+    );
+  }
+
+  // Desktop Layout (existing code)
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col">
       <BubbleHeader onHomeClick={handleHomeClick} />
@@ -385,7 +514,7 @@ export const CryptoBubbleInterface: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-gray-900 rounded-xl overflow-hidden shadow-panel-floating">
+            <div className="w-full h-full bg-gray-900 rounded-xl overflow-hidden shadow-panel-floating">
               <BubbleCanvas
                 bubbles={bubbles}
                 onCardClick={actions.selectCard}
