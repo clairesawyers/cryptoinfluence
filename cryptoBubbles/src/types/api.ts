@@ -33,4 +33,5 @@ export interface PriceHistoryFields {
   Source?: string;
   Volume?: number;
   'Market Cap'?: number;
+  'Recorded At'?: string;
 }

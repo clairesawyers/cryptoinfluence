@@ -287,27 +287,63 @@ export class InvestmentService {
     investmentDate: string,
     investmentAmount: number
   ): Promise<InvestmentStrategy> {
-    const bitcoinPurchasePrice = await this.priceService.getPriceOnDate('BTC', investmentDate);
-    const bitcoinCurrentPrice = await this.priceService.getLatestPrice('BTC');
+    try {
+      console.log('💰 Calculating Bitcoin strategy...');
+      
+      // Try to get Bitcoin price with multiple symbols
+      const bitcoinSymbols = ['BTC', 'Bitcoin'];
+      let bitcoinPurchasePrice: number | null = null;
+      let bitcoinCurrentPrice: number | null = null;
+      
+      for (const symbol of bitcoinSymbols) {
+        console.log(`🔍 Trying Bitcoin symbol: ${symbol}`);
+        
+        if (!bitcoinPurchasePrice) {
+          const purchaseResult = await this.priceService.getPriceOnDateSafe(symbol, investmentDate);
+          if (purchaseResult.price) {
+            bitcoinPurchasePrice = purchaseResult.price;
+            console.log(`✅ Found Bitcoin purchase price with symbol ${symbol}: $${bitcoinPurchasePrice}`);
+          }
+        }
+        
+        if (!bitcoinCurrentPrice) {
+          try {
+            const currentPrice = await this.priceService.getLatestPrice(symbol);
+            if (currentPrice) {
+              bitcoinCurrentPrice = currentPrice;
+              console.log(`✅ Found Bitcoin current price with symbol ${symbol}: $${bitcoinCurrentPrice}`);
+            }
+          } catch (error) {
+            console.warn(`⚠️ Failed to get latest price for ${symbol}`);
+          }
+        }
+        
+        if (bitcoinPurchasePrice && bitcoinCurrentPrice) break;
+      }
 
-    if (!bitcoinPurchasePrice || !bitcoinCurrentPrice) {
-      throw new Error('Bitcoin price data not available');
+      if (!bitcoinPurchasePrice || !bitcoinCurrentPrice) {
+        console.warn('⚠️ Bitcoin price data not available, using fallback strategy');
+        throw new Error('Bitcoin price data not available');
+      }
+
+      const quantity = investmentAmount / bitcoinPurchasePrice;
+      const currentValue = quantity * bitcoinCurrentPrice;
+      const return_ = currentValue - investmentAmount;
+      const returnPercentage = (return_ / investmentAmount) * 100;
+
+      return {
+        id: 'bitcoin',
+        name: 'Hold as Bitcoin',
+        description: 'Invest entire amount in Bitcoin only',
+        initialValue: investmentAmount,
+        currentValue,
+        return: return_,
+        returnPercentage
+      };
+    } catch (error) {
+      console.error('❌ Error calculating Bitcoin strategy:', error);
+      throw error;
     }
-
-    const quantity = investmentAmount / bitcoinPurchasePrice;
-    const currentValue = quantity * bitcoinCurrentPrice;
-    const return_ = currentValue - investmentAmount;
-    const returnPercentage = (return_ / investmentAmount) * 100;
-
-    return {
-      id: 'bitcoin',
-      name: 'Hold as Bitcoin',
-      description: 'Invest entire amount in Bitcoin only',
-      initialValue: investmentAmount,
-      currentValue,
-      return: return_,
-      returnPercentage
-    };
   }
 
   /**

@@ -106,8 +106,9 @@ export const StrategyComparison: React.FC<StrategyComparisonProps> = ({
   console.log('📊 Portfolio Return %:', portfolioReturnPercentage);
   console.log('🏆 === END STRATEGY COMPARISON DATA ===\n');
 
-  // Show empty state if no portfolio data
-  if (portfolioValue === 1000 && portfolioReturn === 0) {
+  // Show empty state if no portfolio data or if there's an error (NaN values)
+  if ((portfolioValue === 1000 && portfolioReturn === 0) || 
+      isNaN(portfolioValue) || isNaN(portfolioReturn) || isNaN(portfolioReturnPercentage)) {
     return (
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -120,7 +121,12 @@ export const StrategyComparison: React.FC<StrategyComparisonProps> = ({
           <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
             <Trophy size={24} className="text-gray-500" />
           </div>
-          <div className="text-gray-400 text-sm">No strategy comparison available</div>
+          <div className="text-gray-400 text-sm mb-2">No strategy comparison available</div>
+          {(isNaN(portfolioValue) || isNaN(portfolioReturn)) && (
+            <div className="text-gray-500 text-xs">
+              Price data is currently being updated. Please check back later.
+            </div>
+          )}
         </div>
       </div>
     );
