@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Bubble } from '../../types';
+import { BubbleCard } from '../../types';
 import { useTouchGestures } from '../../hooks/useTouchGestures';
 import { useMobileDetect } from '../../hooks/useMobileDetect';
 import { usePerformantAnimation } from '../../hooks/usePerformantAnimation';

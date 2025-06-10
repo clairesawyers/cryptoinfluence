@@ -3,8 +3,6 @@ import { BarChart3, ChevronDown } from 'lucide-react';
 import { CompactCoinSelector } from './CompactCoinSelector';
 import { CompactPerformanceChart } from './CompactPerformanceChart';
 import { StrategyComparison } from './DynamicStrategyComparison';
-import { LiveDataSimulator } from './LiveDataSimulator';
-import { ErrorBoundary } from '../ErrorBoundary';
 import { useCoinData } from '../../hooks/useCoinData';
 import { useInvestmentData } from '../../hooks/useInvestmentData';
 
