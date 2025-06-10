@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd cryptoBubbles && npm install && npm run build",
+  "outputDirectory": "cryptoBubbles/dist",
+  "installCommand": "cd cryptoBubbles && npm install",
+  "framework": null
+}
