@@ -126,6 +126,43 @@ export class AirtablePriceService {
   }
 
   /**
+   * Get latest price for a symbol with date information
+   */
+  async getLatestPriceWithDate(symbol: string): Promise<{ price: number; date: string } | null> {
+    try {
+      this.checkConfiguration();
+      console.log(`💰 PriceService: Getting latest price with date for ${symbol}`);
+      
+      const response: AxiosResponse<AirtableResponse<PriceHistoryFields>> = await axios.get(
+        `${this.baseUrl}/${this.tableId}`,
+        {
+          headers: this.headers,
+          params: {
+            filterByFormula: `{Symbol} = '${symbol}'`,
+            maxRecords: 1,
+            sort: [{ field: 'Date', direction: 'desc' }]
+          }
+        }
+      );
+
+      if (response.data.records.length === 0) {
+        console.warn(`⚠️ PriceService: No price data found for ${symbol}`);
+        return null;
+      }
+
+      const record = response.data.records[0];
+      const price = record.fields.Price;
+      const date = record.fields['Date'];
+      
+      console.log(`✅ PriceService: Latest price for ${symbol}: $${price} (${date})`);
+      return { price, date };
+    } catch (error) {
+      console.error(`❌ PriceService: Error getting latest price for ${symbol}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Get price history for a symbol within a date range
    */
   async getPriceRange(symbol: string, startDate: string, endDate: string): Promise<PriceRange> {

@@ -297,6 +297,26 @@ button {
     inset 0 0 0 2px rgba(255, 255, 255, 0.3);
 }
 
+/* Mobile animations */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Mobile scroll optimization */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
 /* Title styling */
 .card-videorelease-title {
   font-size: 1rem;
