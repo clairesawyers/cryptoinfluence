@@ -297,6 +297,24 @@ export const QueryDebugTool = () => {
           </p>
         </div>
 
+        <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+          <h4 className="font-medium text-purple-800 mb-2">🔌 Data Sources</h4>
+          <div className="space-y-2 text-sm text-purple-700">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Investment Simulator:</span>
+              <span>Currently using live Airtable data for price calculations</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Price History:</span>
+              <span>Fetched from Airtable Price History base via API</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Fallback:</span>
+              <span>Legacy mock data available if API fails or returns incomplete data</span>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <button
             onClick={testExactQuery}
